@@ -1,7 +1,7 @@
 /***********************
- * 1. ПАРАМЕТРЫ КОНТРАКТА
+ * 1. CONTRACT PARAMETERS
  ***********************/
-// Адрес Faucet-контракта
+// Adress Faucet-contract
 const contractAddress = "0xa0f4c7218a5f5dcb999cd6317be6027e70fdc8f4"; 
 const contractABI = [
 	{
@@ -155,7 +155,7 @@ const contractABI = [
 	}
 ];
 
-// ERC-20 токен (для approve)
+// ERC-20 token (for approve)
 const tokenAddress = "0x044789496dE6BFfC78A56965d582B08a2045BeB5"; 
 const tokenAbi = [
   {
@@ -171,7 +171,7 @@ const tokenAbi = [
 ];
 
 /***********************
- * 2. ГЛОБАЛЬНЫЕ НАСТРОЙКИ
+ * 2. GLOBAL SETTINGS
  ***********************/
 let score = 0;
 let currentBubbleCount = 20;
@@ -179,7 +179,7 @@ let currentSpeed = 1;
 let soundOn = true;
 
 /***********************
- * 3. Подключение Metamask
+ * 3. Metamask Connection
  ***********************/
 async function connectWallet() {
   if (window.ethereum) {
@@ -243,7 +243,7 @@ async function loadTop10() {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
 
-    // Преобразуем [{player, score}] -> [{user, tokens}]
+    // Transforming [{player, score}] -> [{user, tokens}]
     const leaderData = top.map(item => ({
       user: item.player,
       tokens: item.score.toString()
@@ -257,7 +257,7 @@ async function loadTop10() {
 }
 
 /***********************
- * 5. КНОПКА "SAVE SCORE"
+ * 5. BUTTON "SAVE SCORE"
  ***********************/
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
@@ -275,9 +275,9 @@ if (saveScoreBtn) {
 }
 
 /***********************
- * 6. ИГРА (ПУЗЫРИ)
+ * 6. GAME (BUBBLES)
  ***********************/
-// Создаём пузырьки при загрузке (по 20 каждого типа)
+// Creating bubbles on load (20 of each type)
 for (let i = 0; i < 20; i++) {
   createBubble('port');
   createBubble('Fearel');
@@ -357,7 +357,7 @@ function playSound(soundFile) {
 }
 
 /***********************
- * 7. МЕНЮ / НАСТРОЙКИ
+ * 7. MENU / SETTINGS
  ***********************/
 const menu = document.querySelector('.menu');
 const startBtn = document.getElementById('startBtn');
@@ -422,7 +422,7 @@ settingsIcon.addEventListener('click', () => {
 });
 
 /***********************
- * 8. ЛИДЕРБОРД (ТАБЛИЦА)
+ * 8. LEADERBOARD (TABLE)
  ***********************/
 function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
@@ -444,7 +444,7 @@ function renderLeaderboard(leaderData) {
   });
 }
 
-// Фейковые данные (убери/замени при реальном контракте)
+// Fake data (remove/replace when in real contract)
 const fakeData = [
   { user: 'Vitalik', tokens: 100 },
   { user: 'CZ', tokens: 50 },
@@ -453,7 +453,7 @@ const fakeData = [
 renderLeaderboard(fakeData);
 
 /***********************
- * 9. USERNAME (СОХРАНЕНИЕ ЛОКАЛЬНО)
+ * 9. USERNAME (SAVING LOCALLY)
  ***********************/
 const usernameContainer = document.getElementById('usernameContainer');
 const usernameInput = document.getElementById('usernameInput');
@@ -465,7 +465,7 @@ saveUsernameBtnField.addEventListener('click', () => {
     alert("Enter a valid username!");
     return;
   }
-  // сохраняем в localStorage (пример)
+  // Saving in localStorage (example)
   localStorage.setItem('username', name);
   alert(`Username "${name}" saved locally!`);
 });
