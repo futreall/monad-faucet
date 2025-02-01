@@ -1,0 +1,391 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%; /* чтобы можно было занять всю высоту */
+    overflow: hidden;
+    font-family: 'Montserrat', sans-serif;
+    text-align: center;
+}
+
+/* фон + псевдоэлементы */
+body {
+    position: relative;
+    background: linear-gradient(135deg, #9f2bff, #e94fff);
+}
+
+body::before {
+    content: 'MONAD';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 200px;
+    color: rgba(255,255,255,0.07);
+    /* Мягкое свечение и размытие */
+    text-shadow: 0 0 50px rgba(255,255,255,0.2);
+    filter: blur(4px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* “туман” */
+body::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1200px;
+    height: 800px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,255,255,0.15), transparent 60%);
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* заголовок/счётчик */
+h1.title {
+    margin: 20px 0 0;
+    z-index: 2; 
+    position: relative; 
+    color: #fff;
+    font-size: 32px; 
+    font-weight: 900;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+.score {
+    margin: 0 0 10px;
+    z-index: 2; 
+    position: relative; 
+    color: #f0f0f0;
+    font-size: 16px; 
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* контейнер под пузыри */
+.bubble-container {
+    position: relative;
+    width: 100vw;
+    height: 85vh; 
+    overflow: hidden; 
+    z-index: 1; 
+}
+.bubble {
+    position: absolute;
+    width: 33px;
+    height: 33px;
+    border-radius: 50%;
+    background-size: cover;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+.bubble.port {
+    background-image: url('port.png'); 
+}
+.bubble.Fearel {
+    background-image: url('Fearel.png');
+}
+.bubble.mikeweb {
+    background-image: url('mikeweb.png');
+}
+.bubble.pop {
+    animation: pop 0.3s forwards; 
+}
+@keyframes pop {
+    0%   { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+}
+
+/* Меню-затенение */
+.menu {
+    position: absolute;
+    z-index: 9999;
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.menu-title {
+    font-size: 48px;
+    color: #fff;
+    margin-bottom: 30px;
+    text-shadow: 0 0 15px rgba(255,255,255,0.4);
+}
+
+/* Контейнер для "строк" кнопок в меню */
+.menu-buttons {
+    display: flex;
+    flex-direction: column; /* вертикальное расположение */
+    align-items: center; 
+    gap: 20px;
+    perspective: 800px; /* 3D */
+}
+
+/* каждая "строка" (ряд кнопок) */
+.btn-row {
+    display: flex;
+    gap: 20px;
+    perspective: 800px;
+}
+
+/* Стили 3D-кнопок */
+.btn-3d {
+  position: relative;
+  display: inline-block;
+  font-size: 1.2rem;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #333;
+  background: linear-gradient(135deg, #e0c3fc, #8ec5fc);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transform-style: preserve-3d;
+  margin: 10px;
+}
+.from-left {
+  animation: comeFromLeft 1.2s ease-out forwards;
+}
+.from-right {
+  animation: comeFromRight 1.2s ease-out forwards;
+}
+@keyframes comeFromLeft {
+  0%   { transform: translateX(-200%); }
+  60%  { transform: translateX(10%); }
+  75%  { transform: translateX(-5%); }
+  85%  { transform: translateX(3%); }
+  100% { transform: translateX(0); }
+}
+@keyframes comeFromRight {
+  0%   { transform: translateX(200%); }
+  60%  { transform: translateX(-10%); }
+  75%  { transform: translateX(5%); }
+  85%  { transform: translateX(-3%); }
+  100% { transform: translateX(0); }
+}
+.animated-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* Окно настроек (Settings) */
+.settings-modal {
+    position: absolute;
+    z-index: 10000;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #9f2bff, #e94fff);
+    color: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    width: 320px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    font-family: 'Montserrat', sans-serif;
+}
+.settings-modal h3 {
+  margin-top: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+.settings-modal label,
+.settings-modal select,
+.settings-modal input {
+  font-size: 1rem;
+  font-family: 'Montserrat', sans-serif;
+  margin-bottom: 10px;
+  display: inline-block;
+}
+.settings-modal select,
+.settings-modal input[type="range"] {
+  width: calc(100% - 20px);
+  margin-top: 5px;
+  padding: 4px;
+  border: none;
+  border-radius: 5px;
+  background: #fff;
+  color: #333;
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.2);
+}
+/* Слайдер speedRange */
+.settings-modal input[type="range"] {
+  -webkit-appearance: none; 
+  appearance: none;
+  background: #fff; 
+  height: 5px;
+  cursor: pointer;
+}
+.settings-modal input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; 
+  height: 16px; 
+  width: 16px; 
+  border-radius: 50%;
+  background: #9f2bff; 
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+.settings-modal input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-left: 5px;
+  vertical-align: middle;
+}
+.settings-modal button {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #fff;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  box-shadow: 0 5px rgba(0,0,0,0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.settings-modal button:hover {
+  box-shadow: 0 6px rgba(0,0,0,0.3);
+  transform: translateY(-2px);
+}
+.settings-modal button:active {
+  box-shadow: 0 3px rgba(0,0,0,0.3);
+  transform: translateY(2px);
+}
+
+/* Иконка-шестерёнка (справа вверху) */
+.settings-icon {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  font-size: 28px;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10001; 
+  transition: transform 0.3s;
+}
+.settings-icon:hover {
+  transform: rotate(15deg) scale(1.1);
+}
+.settings-icon:active {
+  transform: rotate(0deg) scale(0.9);
+}
+
+/* Полупрозрачная надпись Powered by FUTUREALL */
+.powered-by {
+  position: fixed;
+  bottom: 3%;
+  right: 3%;
+  transform: none;
+  font-size: 100px;
+  color: rgba(255,255,255,0.07);
+  text-shadow: 0 0 30px rgba(255,255,255,0.15);
+  filter: blur(4px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === Таблица лидеров (слева вверху) === */
+.leaderboard-container {
+  position: fixed;
+  top: 20px;      
+  left: 20px;    
+  width: 220px;   
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(5px);
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  padding: 15px;
+  z-index: 10;
+  color: #fff;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+}
+.leaderboard-title {
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  margin-bottom: 10px;
+}
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+.leaderboard-table thead {
+  background: rgba(255,255,255,0.15);
+}
+.leaderboard-table th,
+.leaderboard-table td {
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 6px 8px;
+  font-size: 14px;
+}
+.leaderboard-table th {
+  font-weight: 700;
+}
+.leaderboard-table tbody tr:hover {
+  background: rgba(255,255,255,0.07);
+}
+
+/* === Анимация снизу (username) === */
+.from-bottom {
+  animation: comeFromBottom 1.2s ease-out forwards;
+}
+@keyframes comeFromBottom {
+  0%   { transform: translateY(200%); }
+  60%  { transform: translateY(-10%); }
+  75%  { transform: translateY(5%); }
+  85%  { transform: translateY(-3%); }
+  100% { transform: translateY(0); }
+}
+
+/* === Поле для ввода username === */
+.username-field {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  outline: none;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+  transition: background 0.3s;
+  width: 180px;
+}
+.username-field::placeholder {
+  color: rgba(255,255,255,0.6);
+  /* мигающая анимация placeholder */
+  animation: blinkPlaceholder 2s infinite;
+}
+@keyframes blinkPlaceholder {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.5;
+  }
+}
+.username-field:focus {
+  background: rgba(255,255,255,0.3);
+}
+
+/* Контейнер username (поле + кнопка) */
+.username-container {
+  display: flex;
+  gap: 20px;
+  perspective: 800px;
+  margin-top: 20px; 
+}

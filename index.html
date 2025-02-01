@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Farm DMON</title>
+  <!-- Подключаем шрифт Montserrat -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Подключаем стили -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Лидеры (слева вверху) -->
+  <div class="leaderboard-container">
+    <h2 class="leaderboard-title">Leaderboard</h2>
+    <table class="leaderboard-table" id="leaderboard">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Tokens</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- JS заполнит -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="powered-by">🐋🐋🐋</div>
+
+  <!-- Заголовок и счётчик -->
+  <h1 class="title">Farm DMON</h1>
+  <div class="score">Score: <span id="score">0</span> DMON</div>
+
+  <!-- Задний затемнённый блок (меню) -->
+  <div class="menu">
+    <h2 class="menu-title">Farm DMON</h2>
+
+    <!-- Общий контейнер для кнопок -->
+    <div class="menu-buttons" style="flex-direction: column; align-items:center; gap:20px;">
+      <!-- Первая строка: Start / Settings -->
+      <div class="btn-row" style="display:flex; gap:20px;">
+        <!-- Кнопка Start (прилетает слева) -->
+        <button id="startBtn" class="btn-3d from-left">
+          <span style="margin-right:6px;">&#9658;</span> Start
+        </button>
+        <!-- Кнопка Settings (прилетает справа) -->
+        <button id="settingsBtn" class="btn-3d from-right">
+          <span style="margin-right:6px;">&#9881;</span> Settings
+        </button>
+      </div>
+
+      <!-- Вторая строка: Username (прилетает снизу) -->
+      <div class="btn-row username-container from-bottom" id="usernameContainer" style="display:flex; gap:20px;">
+        <input 
+          type="text" 
+          id="usernameInput" 
+          class="username-field" 
+          placeholder="Enter username..."
+        />
+        <button id="saveUsernameBtn" class="btn-3d">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Контейнер с пузырьками -->
+  <div class="bubble-container"></div>
+
+  <!-- Иконка-шестерёнка (правый верхний угол) -->
+  <div id="settingsIcon" class="settings-icon">&#9881;</div>
+
+  <!-- Модальное окно "Settings" -->
+  <div class="settings-modal" id="settingsModal" style="display:none;">
+    <h3>Settings</h3>
+
+    <label for="bubbleCount">Bubbles:</label>
+    <select id="bubbleCount">
+      <option value="10">10</option>
+      <option value="20" selected>20</option>
+      <option value="30">30</option>
+    </select>
+    <br /><br />
+
+    <label for="speedRange">Speed:</label>
+    <input
+      type="range"
+      id="speedRange"
+      min="0.5"
+      max="2"
+      step="0.1"
+      value="1"
+    />
+    <span id="speedValue">1</span>
+    <br /><br />
+
+    <label for="soundToggle">Sound:</label>
+    <input type="checkbox" id="soundToggle" checked />
+    <br /><br />
+
+    <!-- Кнопка Save Score -->
+    <button id="saveScoreBtn">Save Score</button>
+    <!-- Кнопка сброса счёта -->
+    <button id="resetScoreBtn">Reset Score</button>
+    <br /><br />
+
+    <button id="closeSettingsBtn">Close</button>
+  </div>
+
+  <!-- Подключаем ethers, затем наш script.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
