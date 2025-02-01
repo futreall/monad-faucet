@@ -1,13 +1,13 @@
 html, body {
     margin: 0;
     padding: 0;
-    height: 100%; /* чтобы можно было занять всю высоту */
+    height: 100%; 
     overflow: hidden;
     font-family: 'Montserrat', sans-serif;
     text-align: center;
 }
 
-/* фон + псевдоэлементы */
+
 body {
     position: relative;
     background: linear-gradient(135deg, #9f2bff, #e94fff);
@@ -21,14 +21,14 @@ body::before {
     transform: translate(-50%, -50%);
     font-size: 200px;
     color: rgba(255,255,255,0.07);
-    /* Мягкое свечение и размытие */
+    
     text-shadow: 0 0 50px rgba(255,255,255,0.2);
     filter: blur(4px);
     pointer-events: none;
     z-index: 0;
 }
 
-/* “туман” */
+
 body::after {
     content: '';
     position: absolute;
@@ -43,7 +43,7 @@ body::after {
     z-index: 0;
 }
 
-/* заголовок/счётчик */
+
 h1.title {
     margin: 20px 0 0;
     z-index: 2; 
@@ -62,7 +62,7 @@ h1.title {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* контейнер под пузыри */
+
 .bubble-container {
     position: relative;
     width: 100vw;
@@ -97,7 +97,7 @@ h1.title {
     100% { transform: scale(0); opacity: 0; }
 }
 
-/* Меню-затенение */
+
 .menu {
     position: absolute;
     z-index: 9999;
@@ -118,23 +118,23 @@ h1.title {
     text-shadow: 0 0 15px rgba(255,255,255,0.4);
 }
 
-/* Контейнер для "строк" кнопок в меню */
+
 .menu-buttons {
     display: flex;
-    flex-direction: column; /* вертикальное расположение */
+    flex-direction: column; 
     align-items: center; 
     gap: 20px;
-    perspective: 800px; /* 3D */
+    perspective: 800px; 
 }
 
-/* каждая "строка" (ряд кнопок) */
+
 .btn-row {
     display: flex;
     gap: 20px;
     perspective: 800px;
 }
 
-/* Стили 3D-кнопок */
+
 .btn-3d {
   position: relative;
   display: inline-block;
@@ -176,7 +176,7 @@ h1.title {
   gap: 20px;
 }
 
-/* Окно настроек (Settings) */
+
 .settings-modal {
     position: absolute;
     z-index: 10000;
@@ -218,7 +218,7 @@ h1.title {
   color: #333;
   box-shadow: inset 0 0 3px rgba(0,0,0,0.2);
 }
-/* Слайдер speedRange */
+
 .settings-modal input[type="range"] {
   -webkit-appearance: none; 
   appearance: none;
@@ -264,7 +264,7 @@ h1.title {
   transform: translateY(2px);
 }
 
-/* Иконка-шестерёнка (справа вверху) */
+
 .settings-icon {
   position: fixed;
   top: 20px;
@@ -282,7 +282,7 @@ h1.title {
   transform: rotate(0deg) scale(0.9);
 }
 
-/* Полупрозрачная надпись Powered by FUTUREALL */
+
 .powered-by {
   position: fixed;
   bottom: 3%;
@@ -296,7 +296,7 @@ h1.title {
   z-index: 0;
 }
 
-/* === Таблица лидеров (слева вверху) === */
+
 .leaderboard-container {
   position: fixed;
   top: 20px;      
@@ -340,7 +340,7 @@ h1.title {
   background: rgba(255,255,255,0.07);
 }
 
-/* === Анимация снизу (username) === */
+
 .from-bottom {
   animation: comeFromBottom 1.2s ease-out forwards;
 }
@@ -352,7 +352,7 @@ h1.title {
   100% { transform: translateY(0); }
 }
 
-/* === Поле для ввода username === */
+
 .username-field {
   border: none;
   border-radius: 10px;
@@ -367,7 +367,7 @@ h1.title {
 }
 .username-field::placeholder {
   color: rgba(255,255,255,0.6);
-  /* мигающая анимация placeholder */
+  
   animation: blinkPlaceholder 2s infinite;
 }
 @keyframes blinkPlaceholder {
@@ -382,7 +382,7 @@ h1.title {
   background: rgba(255,255,255,0.3);
 }
 
-/* Контейнер username (поле + кнопка) */
+
 .username-container {
   display: flex;
   gap: 20px;
