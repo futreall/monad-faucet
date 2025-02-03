@@ -168,7 +168,7 @@ async function connectMetamask() {
 }
 
 /***********************
- * 4. LOAD TOP-10
+ * 4. LOAD TOP-10 (SHOW USER BEST SCORE)
  ***********************/
 async function loadTop10() {
   const result = await connectMetamask();
@@ -177,13 +177,33 @@ async function loadTop10() {
 
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+    // Текущий топ-10 с контракта
     const top = await faucetContract.getTop10();
-    const leaderData = top.map(item => ({
-      user: item.player,
-      tokens: item.score.toString()
-    }));
+    const signerAddress = await signer.getAddress();
+    const leaderData = top.map(item => {
+      let displayName = item.player;
+      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
+        displayName = localUsername;
+      }
+      return {
+        user: displayName,
+        tokens: item.score.toString()
+      };
+    });
+
+    // Показываем топ-10
     console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData, true);
+
+    // Также выводим лучший счет конкретного пользователя
+    const best = await faucetContract.scores(signerAddress);
+    console.log("Your best on-chain score:", best.toString());
+    // Пример вывода в некий элемент <span id="myBestScore">:
+    const bestScoreEl = document.getElementById('myBestScore');
+    if (bestScoreEl) {
+      bestScoreEl.textContent = "Your best score: " + best.toString();
+    }
   } catch (err) {
     console.error("loadTop10 error:", err);
     alert("Failed to load leaderboard");
@@ -191,7 +211,7 @@ async function loadTop10() {
 }
 
 /***********************
- * 5. BUTTON "SAVE SCORE"
+ * 5. BUTTON "SAVE SCORE" (NATIVE PAYMENT)
  ***********************/
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
@@ -362,7 +382,6 @@ function renderLeaderboard(leaderData, isChain = false) {
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
     let displayName = item.user;
-
     const userCell = document.createElement('td');
     userCell.textContent = displayName;
     row.appendChild(userCell);
@@ -447,7 +466,7 @@ connectWalletBtn.addEventListener('click', async () => {
   console.log("Wallet connected:", address);
 });
 
-// Helper function to shorten address
+// Helper to shorten address
 function shortAddress(addr) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
