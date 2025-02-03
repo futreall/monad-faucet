@@ -1,161 +1,13 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-// Adress Faucet-contract
+// Faucet contract
 const contractAddress = "0xa0f4c7218a5f5dcb999cd6317be6027e70fdc8f4"; 
 const contractABI = [
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "newScore",
-				"type": "uint256"
-			}
-		],
-		"name": "submitScore",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "tokenAddress",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_price",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			}
-		],
-		"name": "withdrawTokens",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "gameToken",
-		"outputs": [
-			{
-				"internalType": "contract IERC20",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getTop10",
-		"outputs": [
-			{
-				"components": [
-					{
-						"internalType": "address",
-						"name": "player",
-						"type": "address"
-					},
-					{
-						"internalType": "uint256",
-						"name": "score",
-						"type": "uint256"
-					}
-				],
-				"internalType": "struct Faucet.Leader[10]",
-				"name": "",
-				"type": "tuple[10]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "price",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "scores",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "top10",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "player",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "score",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	}
+  // ... ABI (submitScore, getTop10, etc.) ...
 ];
 
-// ERC-20 token (for approve)
+// ERC-20 token (для approve)
 const tokenAddress = "0x044789496dE6BFfC78A56965d582B08a2045BeB5"; 
 const tokenAbi = [
   {
@@ -178,8 +30,11 @@ let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
 
+// Локально храним “username” (из localStorage)
+let localUsername = localStorage.getItem('username') || "";
+
 /***********************
- * 3. Metamask Connection
+ * 3. Metamask Connection (on demand)
  ***********************/
 async function connectWallet() {
   if (window.ethereum) {
@@ -242,14 +97,15 @@ async function loadTop10() {
 
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
-
-    // Transforming [{player, score}] -> [{user, tokens}]
+    // Преобразуем [{player, score}] -> [{user, tokens}]
     const leaderData = top.map(item => ({
       user: item.player,
       tokens: item.score.toString()
     }));
     console.log("Top-10 from contract:", leaderData);
-    renderLeaderboard(leaderData);
+
+    // Отрисуем chain-таблицу (isChain=true)
+    renderLeaderboard(leaderData, true);
   } catch (err) {
     console.error("loadTop10 error:", err);
     alert("Failed to load leaderboard");
@@ -263,12 +119,12 @@ const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
   saveScoreBtn.addEventListener('click', async () => {
     const priceWei = "1000000000000000000"; // 1 токен (18 decimals)
-    // 1) Approve
+    // 1) approve
     const ok = await approveTokens(priceWei);
     if (ok) {
-      // 2) Submit
+      // 2) submitScore
       await submitScoreOnChain(score);
-      // 3) Load top-10
+      // 3) загрузить chain-лидерборд
       await loadTop10();
     }
   });
@@ -277,7 +133,7 @@ if (saveScoreBtn) {
 /***********************
  * 6. GAME (BUBBLES)
  ***********************/
-// Creating bubbles on load (20 of each type)
+// При загрузке создаём по 20 пузырьков каждого типа
 for (let i = 0; i < 20; i++) {
   createBubble('port');
   createBubble('Fearel');
@@ -286,7 +142,7 @@ for (let i = 0; i < 20; i++) {
 
 function createBubble(type = 'random') {
   const bubble = document.createElement('div');
-  
+
   if (type === 'random') {
     const rnd = Math.random();
     if (rnd < 0.33) bubble.classList.add('bubble', 'port');
@@ -307,6 +163,7 @@ function createBubble(type = 'random') {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector('.bubble-container').getBoundingClientRect();
 
+    // Отталкивание от краёв
     if (bubbleRect.left <= containerRect.left) {
       deltaX = Math.abs(deltaX);
     } else if (bubbleRect.right >= containerRect.right) {
@@ -327,21 +184,17 @@ function createBubble(type = 'random') {
   }
   moveBubble();
 
+  // Клик по пузырьку => увеличиваем score + обновляем таблицу
   bubble.addEventListener('click', () => {
     bubble.classList.add('pop');
+    playSound('pop.mp3');
 
-    if (bubble.classList.contains('port')) {
-      playSound('pop.mp3');
-      score++;
-    } else if (bubble.classList.contains('Fearel')) {
-      playSound('pop.mp3');
-      score++;
-    } else if (bubble.classList.contains('mikeweb')) {
-      playSound('pop.mp3');
-      score++;
-    }
-
+    // +1 к score
+    score++;
     document.getElementById('score').textContent = score;
+
+    // ОБНОВЛЯЕМ локальную таблицу
+    renderLocalLeaderboard();
 
     setTimeout(() => {
       bubble.remove();
@@ -409,6 +262,8 @@ function reSpawnGame() {
 resetScoreBtn.addEventListener('click', () => {
   score = 0;
   document.getElementById('score').textContent = score;
+  // При сбросе тоже перерисовываем локальную таблицу
+  renderLocalLeaderboard();
 });
 
 speedRange.addEventListener('input', () => {
@@ -424,16 +279,36 @@ settingsIcon.addEventListener('click', () => {
 /***********************
  * 8. LEADERBOARD (TABLE)
  ***********************/
-function renderLeaderboard(leaderData) {
+/**
+ * renderLeaderboard(leaderData, isChain=false)
+ * - Если isChain=true, данные пришли из контракта
+ *   => сравниваем адрес с нашим, если совпадает, подменяем user => localUsername
+ */
+async function renderLeaderboard(leaderData, isChain = false) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = '';
 
+  let myAddress = null;
+  if (isChain) {
+    try {
+      const { signer } = await connectWallet();
+      if (signer) {
+        myAddress = (await signer.getAddress()).toLowerCase();
+      }
+    } catch(e) {}
+  }
+
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
+    let displayName = item.user;
+
+    if (isChain && localUsername && myAddress && item.user.toLowerCase() === myAddress) {
+      displayName = localUsername;
+    }
 
     const userCell = document.createElement('td');
-    userCell.textContent = item.user;
+    userCell.textContent = displayName;
     row.appendChild(userCell);
 
     const tokensCell = document.createElement('td');
@@ -444,28 +319,42 @@ function renderLeaderboard(leaderData) {
   });
 }
 
-// Fake data (remove/replace when in real contract)
-const fakeData = [
-  { user: 'Vitalik', tokens: 100 },
-  { user: 'CZ', tokens: 50 },
-  { user: 'Satoshi', tokens: 9999 }
-];
-renderLeaderboard(fakeData);
-
 /***********************
- * 9. USERNAME (SAVING LOCALLY)
+ * 9. USERNAME (LOCAL)
  ***********************/
 const usernameContainer = document.getElementById('usernameContainer');
 const usernameInput = document.getElementById('usernameInput');
 const saveUsernameBtnField = document.getElementById('saveUsernameBtn');
 
+// При загрузке, восстанавливаем ник
+if (localUsername) {
+  usernameInput.value = localUsername;
+}
+
+// При “Save” (ник)
 saveUsernameBtnField.addEventListener('click', () => {
   const name = usernameInput.value.trim();
   if (!name) {
     alert("Enter a valid username!");
     return;
   }
-  // Saving in localStorage (example)
+  localUsername = name;
   localStorage.setItem('username', name);
   alert(`Username "${name}" saved locally!`);
+
+  // Обновим локальную таблицу (ник + текущий score)
+  renderLocalLeaderboard();
 });
+
+/** Локальная таблица: {user: localUsername, tokens: score} */
+function renderLocalLeaderboard() {
+  const data = [];
+  if (localUsername) {
+    data.push({ user: localUsername, tokens: score });
+  }
+  // isChain = false
+  renderLeaderboard(data, false);
+}
+
+// При загрузке покажем локальную таблицу, если есть ник
+renderLocalLeaderboard();
