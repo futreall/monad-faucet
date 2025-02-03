@@ -1,7 +1,7 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0xd52ae5dbf2b09e5b071f1e4b694336a4d86037f8";
+const contractAddress = "0x519cee017973b9a17718db639fb873baad3274be";
 const contractABI = [
   {
     "inputs": [
@@ -35,7 +35,7 @@ const contractABI = [
         "type": "address"
       }
     ],
-    "name": "withdraw",
+    "name": "withdrawNative",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -199,7 +199,6 @@ async function loadTop10() {
     // Также выводим лучший счет конкретного пользователя
     const best = await faucetContract.scores(signerAddress);
     console.log("Your best on-chain score:", best.toString());
-    // Пример вывода в некий элемент <span id="myBestScore">:
     const bestScoreEl = document.getElementById('myBestScore');
     if (bestScoreEl) {
       bestScoreEl.textContent = "Your best score: " + best.toString();
