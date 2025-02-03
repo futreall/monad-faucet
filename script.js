@@ -1,8 +1,44 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0x519cee017973b9a17718db639fb873baad3274be";
+const contractAddress = "0xb7f3bc3a945efffc0680eff53e3efbe70651a5ba"; 
 const contractABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "score",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "ScoreSubmitted",
+    "type": "event"
+  },
   {
     "inputs": [
       {
@@ -19,17 +55,6 @@ const contractABI = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "_price",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address payable",
         "name": "to",
         "type": "address"
@@ -38,6 +63,65 @@ const contractABI = [
     "name": "withdrawNative",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "allScores",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "score",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "time",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllScores",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "player",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "score",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "time",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Faucet.ScoreRecord[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -168,7 +252,7 @@ async function connectMetamask() {
 }
 
 /***********************
- * 4. LOAD TOP-10 (SHOW USER BEST SCORE)
+ * 4. LOAD TOP-10
  ***********************/
 async function loadTop10() {
   const result = await connectMetamask();
@@ -177,10 +261,9 @@ async function loadTop10() {
 
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-
-    // Текущий топ-10 с контракта
     const top = await faucetContract.getTop10();
     const signerAddress = await signer.getAddress();
+
     const leaderData = top.map(item => {
       let displayName = item.player;
       if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
@@ -192,11 +275,10 @@ async function loadTop10() {
       };
     });
 
-    // Показываем топ-10
     console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData, true);
 
-    // Также выводим лучший счет конкретного пользователя
+    // Выведем лучший счёт для текущего адреса
     const best = await faucetContract.scores(signerAddress);
     console.log("Your best on-chain score:", best.toString());
     const bestScoreEl = document.getElementById('myBestScore');
@@ -207,6 +289,68 @@ async function loadTop10() {
     console.error("loadTop10 error:", err);
     alert("Failed to load leaderboard");
   }
+}
+
+/***********************
+ * 4b. LOAD ALL SCORES (FULL HISTORY)
+ ***********************/
+async function loadAllScores() {
+  const result = await connectMetamask();
+  if (!result) return;
+  const { signer } = result;
+
+  try {
+    const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
+    const all = await faucetContract.getAllScores();
+    const signerAddress = await signer.getAddress();
+
+    // Преобразуем массив для рендера (включая время)
+    const allData = all.map(rec => {
+      let displayName = rec.player;
+      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
+        displayName = localUsername;
+      }
+      return {
+        user: displayName,
+        tokens: rec.score.toString(),
+        time: rec.time.toString()
+      };
+    });
+
+    console.log("All scores:", allData);
+    // Рендерим в другой таблице или как вам удобнее
+    renderAllScores(allData);
+  } catch (err) {
+    console.error("loadAllScores error:", err);
+    alert("Failed to load full score history");
+  }
+}
+
+// Пример дополнительной функции рендера для всей истории (с колонкой "time"):
+function renderAllScores(allData) {
+  const tableBody = document.querySelector('#allScoresTable tbody');
+  if (!tableBody) return;
+  tableBody.innerHTML = '';
+
+  allData.forEach(item => {
+    const row = document.createElement('tr');
+
+    const userCell = document.createElement('td');
+    userCell.textContent = item.user;
+    row.appendChild(userCell);
+
+    const scoreCell = document.createElement('td');
+    scoreCell.textContent = item.tokens;
+    row.appendChild(scoreCell);
+
+    // Можно конвертировать время из UNIX в локальную дату:
+    const timeCell = document.createElement('td');
+    const asDate = new Date(parseInt(item.time) * 1000).toLocaleString();
+    timeCell.textContent = asDate;
+    row.appendChild(timeCell);
+
+    tableBody.appendChild(row);
+  });
 }
 
 /***********************
@@ -226,7 +370,10 @@ if (saveScoreBtn) {
       await tx.wait();
       console.log("Score submitted on-chain:", score);
       alert("Score submitted successfully!");
+
+      // Перезагрузим Top-10 и полную историю
       await loadTop10();
+      await loadAllScores();
     } catch (err) {
       console.error("submitScore error:", err);
       alert("Failed to submit score");
