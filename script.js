@@ -1,43 +1,20 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0xb7f3bc3a945efffc0680eff53e3efbe70651a5ba"; 
+const contractAddress = "0x121af877c249ab6b950634026c8251baa9226a1e";
 const contractABI = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "_price",
-        "type": "uint256"
+        "internalType": "string",
+        "name": "newName",
+        "type": "string"
       }
     ],
+    "name": "setUsername",
+    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "score",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "ScoreSubmitted",
-    "type": "event"
+    "type": "function"
   },
   {
     "inputs": [
@@ -55,6 +32,17 @@ const contractABI = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address payable",
         "name": "to",
         "type": "address"
@@ -63,65 +51,6 @@ const contractABI = [
     "name": "withdrawNative",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "allScores",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "score",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "time",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllScores",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "player",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "score",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "time",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Faucet.ScoreRecord[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -217,6 +146,25 @@ const contractABI = [
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "userNames",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
@@ -228,7 +176,8 @@ let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
 
-let localUsername = localStorage.getItem('username') || "";
+// (Удаляем localUsername, потому что теперь ник хранится в самом контракте)
+// Если хотите оставить локальное, можно, но теперь контракт тоже хранит userNames.
 
 /***********************
  * 3. CONNECT METAMASK (SIMPLE)
@@ -252,7 +201,27 @@ async function connectMetamask() {
 }
 
 /***********************
- * 4. LOAD TOP-10
+ * 4. SET USERNAME ON-CHAIN
+ ***********************/
+async function setOnChainUsername(newName) {
+  const result = await connectMetamask();
+  if (!result) return;
+  const { signer } = result;
+  try {
+    const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
+    const tx = await faucetContract.setUsername(newName);
+    await tx.wait();
+    alert("Username set on-chain successfully!");
+    // Перезагрузить Top-10, чтобы увидеть изменения
+    await loadTop10();
+  } catch (err) {
+    console.error("setOnChainUsername error:", err);
+    alert("Failed to set username on-chain");
+  }
+}
+
+/***********************
+ * 5. LOAD TOP-10
  ***********************/
 async function loadTop10() {
   const result = await connectMetamask();
@@ -262,25 +231,33 @@ async function loadTop10() {
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
-    const signerAddress = await signer.getAddress();
 
-    const leaderData = top.map(item => {
-      let displayName = item.player;
-      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
-        displayName = localUsername;
-      }
-      return {
+    // Для таблицы
+    const leaderData = [];
+    for (let i = 0; i < top.length; i++) {
+      const playerAddr = top[i].player;
+      const scoreVal = top[i].score.toString();
+
+      // Запрашиваем имя из контракта
+      const chainUsername = await faucetContract.userNames(playerAddr);
+
+      // Если имя пустое, показываем короткий адрес
+      const displayName = chainUsername && chainUsername.length > 0
+        ? chainUsername
+        : shortAddress(playerAddr);
+
+      leaderData.push({
         user: displayName,
-        tokens: item.score.toString()
-      };
-    });
+        tokens: scoreVal
+      });
+    }
 
     console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData, true);
 
-    // Выведем лучший счёт для текущего адреса
+    // Получаем лучший счёт игрока
+    const signerAddress = await signer.getAddress();
     const best = await faucetContract.scores(signerAddress);
-    console.log("Your best on-chain score:", best.toString());
     const bestScoreEl = document.getElementById('myBestScore');
     if (bestScoreEl) {
       bestScoreEl.textContent = "Your best score: " + best.toString();
@@ -292,97 +269,36 @@ async function loadTop10() {
 }
 
 /***********************
- * 4b. LOAD ALL SCORES (FULL HISTORY)
+ * 5b. LOAD ALL SCORES (IF NEEDED)
  ***********************/
-async function loadAllScores() {
+// Этот контракт не хранит массив allScores с userNames.
+// Если нужно, добавьте вызов userNames при рендере, аналогично как выше ( chainUsername = userNames(...) ).
+
+/***********************
+ * 6. SUBMIT SCORE (NATIVE PAYMENT)
+ ***********************/
+async function submitScoreOnChain(finalScore) {
   const result = await connectMetamask();
   if (!result) return;
   const { signer } = result;
 
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-    const all = await faucetContract.getAllScores();
-    const signerAddress = await signer.getAddress();
-
-    // Преобразуем массив для рендера (включая время)
-    const allData = all.map(rec => {
-      let displayName = rec.player;
-      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
-        displayName = localUsername;
-      }
-      return {
-        user: displayName,
-        tokens: rec.score.toString(),
-        time: rec.time.toString()
-      };
-    });
-
-    console.log("All scores:", allData);
-    // Рендерим в другой таблице или как вам удобнее
-    renderAllScores(allData);
+    const priceWei = ethers.utils.parseEther("1"); // 1 native token
+    const tx = await faucetContract.submitScore(finalScore, { value: priceWei });
+    await tx.wait();
+    console.log("Score submitted on-chain:", finalScore);
+    alert("Score submitted successfully!");
+    // Обновляем Top-10
+    await loadTop10();
   } catch (err) {
-    console.error("loadAllScores error:", err);
-    alert("Failed to load full score history");
+    console.error("submitScoreOnChain error:", err);
+    alert("Failed to submit score");
   }
 }
 
-// Пример дополнительной функции рендера для всей истории (с колонкой "time"):
-function renderAllScores(allData) {
-  const tableBody = document.querySelector('#allScoresTable tbody');
-  if (!tableBody) return;
-  tableBody.innerHTML = '';
-
-  allData.forEach(item => {
-    const row = document.createElement('tr');
-
-    const userCell = document.createElement('td');
-    userCell.textContent = item.user;
-    row.appendChild(userCell);
-
-    const scoreCell = document.createElement('td');
-    scoreCell.textContent = item.tokens;
-    row.appendChild(scoreCell);
-
-    // Можно конвертировать время из UNIX в локальную дату:
-    const timeCell = document.createElement('td');
-    const asDate = new Date(parseInt(item.time) * 1000).toLocaleString();
-    timeCell.textContent = asDate;
-    row.appendChild(timeCell);
-
-    tableBody.appendChild(row);
-  });
-}
-
 /***********************
- * 5. BUTTON "SAVE SCORE" (NATIVE PAYMENT)
- ***********************/
-const saveScoreBtn = document.getElementById('saveScoreBtn');
-if (saveScoreBtn) {
-  saveScoreBtn.addEventListener('click', async () => {
-    const result = await connectMetamask();
-    if (!result) return;
-    const { signer } = result;
-
-    try {
-      const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-      const priceWei = ethers.utils.parseEther("1"); // 1 native token
-      const tx = await faucetContract.submitScore(score, { value: priceWei });
-      await tx.wait();
-      console.log("Score submitted on-chain:", score);
-      alert("Score submitted successfully!");
-
-      // Перезагрузим Top-10 и полную историю
-      await loadTop10();
-      await loadAllScores();
-    } catch (err) {
-      console.error("submitScore error:", err);
-      alert("Failed to submit score");
-    }
-  });
-}
-
-/***********************
- * 6. GAME (BUBBLES)
+ * 7. GAME (BUBBLES)
  ***********************/
 for (let i = 0; i < 20; i++) {
   createBubble('port');
@@ -454,8 +370,11 @@ function playSound(soundFile) {
 }
 
 /***********************
- * 7. MENU / SETTINGS
+ * 8. MENU / SETTINGS
  ***********************/
+let currentBubbleCount = 20;
+let currentSpeed = 1;
+
 const menu = document.querySelector('.menu');
 const startBtn = document.getElementById('startBtn');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -470,7 +389,6 @@ const resetScoreBtn = document.getElementById('resetScoreBtn');
 
 startBtn.addEventListener('click', () => {
   playSound('pop.mp3');
-  console.log("Start clicked -> hiding menu");
   menu.style.display = 'none';
 });
 
@@ -518,7 +436,7 @@ settingsIcon.addEventListener('click', () => {
 });
 
 /***********************
- * 8. LEADERBOARD (TABLE)
+ * 9. LEADERBOARD (TABLE)
  ***********************/
 function renderLeaderboard(leaderData, isChain = false) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
@@ -527,9 +445,8 @@ function renderLeaderboard(leaderData, isChain = false) {
 
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
-    let displayName = item.user;
     const userCell = document.createElement('td');
-    userCell.textContent = displayName;
+    userCell.textContent = item.user;
     row.appendChild(userCell);
 
     const tokensCell = document.createElement('td');
@@ -541,45 +458,38 @@ function renderLeaderboard(leaderData, isChain = false) {
 }
 
 /***********************
- * 9. USERNAME (LOCAL)
+ * 10. USERNAME ON CHAIN
  ***********************/
-const usernameContainer = document.getElementById('usernameContainer');
-const usernameInput = document.getElementById('usernameInput');
+const onChainNameInput = document.getElementById('usernameInput');
 const saveUsernameBtnField = document.getElementById('saveUsernameBtn');
 
-if (localUsername) {
-  usernameInput.value = localUsername;
+if (onChainNameInput && saveUsernameBtnField) {
+  saveUsernameBtnField.addEventListener('click', async () => {
+    const name = onChainNameInput.value.trim();
+    if (!name) {
+      alert("Enter a valid username!");
+      return;
+    }
+    await setOnChainUsername(name);
+  });
 }
 
-saveUsernameBtnField.addEventListener('click', () => {
-  const name = usernameInput.value.trim();
-  if (!name) {
-    alert("Enter a valid username!");
-    return;
-  }
-  localUsername = name;
-  localStorage.setItem('username', name);
-  alert(`Username "${name}" saved locally!`);
-  renderLocalLeaderboard();
-});
-
+/***********************
+ * 11. LOCAL LEADERBOARD
+ ***********************/
 function renderLocalLeaderboard() {
-  const data = [];
-  if (localUsername) {
-    data.push({ user: localUsername, tokens: score });
-  }
+  const data = [{ user: "LocalUser", tokens: score }];
   renderLeaderboard(data, false);
 }
 // При загрузке — локальная таблица
 renderLocalLeaderboard();
 
 /***********************
- * 10. CONNECT WALLET BUTTON (Metamask)
+ * 12. CONNECT WALLET BUTTON
  ***********************/
 const connectWalletBtn = document.getElementById('connectWalletBtn');
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener('click', async () => {
-    console.log("Connect Wallet clicked!");
     const result = await connectMetamask();
     if (!result) {
       alert("Could not connect to Metamask");
@@ -590,7 +500,7 @@ if (connectWalletBtn) {
 }
 
 /**********************************************
- * 11. MAKE SURE THE BUTTON IS ABOVE THE MENU
+ * 13. MAKE SURE THE BUTTON IS ABOVE THE MENU
  **********************************************/
 const topRightControls = document.querySelector('.top-right-controls');
 if (topRightControls) {
@@ -598,9 +508,8 @@ if (topRightControls) {
   topRightControls.style.pointerEvents = 'auto';
 }
 
-// New code for connected metamask - show short address
+// Show short address after connecting
 connectWalletBtn.addEventListener('click', async () => {
-  console.log("Connect Wallet clicked!");
   const result = await connectMetamask();
   if (!result) {
     alert("Could not connect to Metamask");
@@ -612,7 +521,20 @@ connectWalletBtn.addEventListener('click', async () => {
   console.log("Wallet connected:", address);
 });
 
-// Helper to shorten address
+/***********************
+ * 14. SHORT ADDRESS
+ ***********************/
 function shortAddress(addr) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+/***********************
+ * 15. SAVE SCORE BUTTON
+ ***********************/
+const saveScoreBtn = document.getElementById('saveScoreBtn');
+if (saveScoreBtn) {
+  saveScoreBtn.addEventListener('click', async () => {
+    // отправляем текущий локальный "score" в контракт
+    await submitScoreOnChain(score);
+  });
 }
