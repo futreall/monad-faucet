@@ -308,7 +308,7 @@ function createBubble(type = 'random') {
     playSound('pop.mp3');
     score++;
     document.getElementById('score').textContent = score;
-    // Раньше было renderLocalLeaderboard(), убрали чтобы не затирать таблицу
+    // Убрали renderLocalLeaderboard(), чтобы не затирать топ-10
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
