@@ -6,19 +6,6 @@ const contractABI = [
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "newName",
-        "type": "string"
-      }
-    ],
-    "name": "setUsername",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
         "name": "newScore",
         "type": "uint256"
@@ -146,25 +133,6 @@ const contractABI = [
     ],
     "stateMutability": "view",
     "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "userNames",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   }
 ];
 
@@ -175,7 +143,6 @@ let score = 0;
 let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
-let localUsername = localStorage.getItem('username') || "";
 
 /***********************
  * 3. CONNECT METAMASK (SIMPLE)
@@ -210,14 +177,13 @@ async function loadTop10() {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
 
-    // Для каждого участника берём userName из контракта
-    const leaderData = await Promise.all(
-      top.map(async (item) => {
-        let chainName = await faucetContract.userNames(item.player);
-        if (!chainName) chainName = shortAddress(item.player);
-        return { user: chainName, tokens: item.score.toString() };
-      })
-    );
+    // Просто показываем адрес+скор, без ника
+    const leaderData = top.map((item) => {
+      return {
+        user: shortAddress(item.player),
+        tokens: item.score.toString()
+      };
+    });
 
     renderLeaderboard(leaderData);
 
@@ -308,7 +274,6 @@ function createBubble(type = 'random') {
     playSound('pop.mp3');
     score++;
     document.getElementById('score').textContent = score;
-    // Убрали renderLocalLeaderboard(), чтобы не затирать топ-10
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
@@ -406,38 +371,9 @@ function renderLeaderboard(leaderData) {
 }
 
 /***********************
- * 9. USERNAME (ON-CHAIN)
+ * 9. (USERNAME REMOVED)
  ***********************/
-const usernameInput = document.getElementById('usernameInput');
-const saveUsernameBtnField = document.getElementById('saveUsernameBtn');
-
-if (localUsername) {
-  usernameInput.value = localUsername;
-}
-
-saveUsernameBtnField.addEventListener('click', async () => {
-  const name = usernameInput.value.trim();
-  if (!name) {
-    alert("Enter a valid username!");
-    return;
-  }
-  localUsername = name;
-  localStorage.setItem('username', name);
-
-  // Записываем имя в контракт
-  const result = await connectMetamask();
-  if (!result) return;
-  const { signer } = result;
-  try {
-    const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-    const tx = await faucetContract.setUsername(name);
-    await tx.wait();
-    alert(`Username "${name}" saved on-chain!`);
-  } catch (err) {
-    console.error(err);
-    alert("Failed to save username on-chain");
-  }
-});
+// Удалили setUsername полностью, оставили только submitScore
 
 /***********************
  * 10. CONNECT WALLET BUTTON (Metamask)
