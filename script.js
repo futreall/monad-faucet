@@ -1,23 +1,137 @@
-
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0xa0f4c7218a5f5dcb999cd6317be6027e70fdc8f4"; 
+const contractAddress = "0xd52ae5dbf2b09e5b071f1e4b694336a4d86037f8";
 const contractABI = [
-  // ... ABI ...
-];
-
-// ERC-20 token
-const tokenAddress = "0x044789496dE6BFfC78A56965d582B08a2045BeB5"; 
-const tokenAbi = [
   {
-    "constant": false,
     "inputs": [
-      { "name": "_spender", "type": "address" },
-      { "name": "_value",   "type": "uint256" }
+      {
+        "internalType": "uint256",
+        "name": "newScore",
+        "type": "uint256"
+      }
     ],
-    "name": "approve",
-    "outputs": [{ "name": "", "type": "bool" }],
+    "name": "submitScore",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTop10",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "player",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "score",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Faucet.Leader[10]",
+        "name": "",
+        "type": "tuple[10]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "price",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "scores",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "top10",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "score",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ];
@@ -41,14 +155,10 @@ async function connectMetamask() {
     return null;
   }
   try {
-    // Запрашиваем доступ к аккаунтам
     await window.ethereum.request({ method: 'eth_requestAccounts' });
     console.log("Wallet connected!");
-
-    // Создаём ethers-провайдер
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
-
     return { provider, signer };
   } catch (err) {
     console.error("User rejected request:", err);
@@ -58,45 +168,8 @@ async function connectMetamask() {
 }
 
 /***********************
- * 4. APPROVE + SUBMIT + LOADTOP10
+ * 4. LOAD TOP-10
  ***********************/
-async function approveTokens(amountWei) {
-  const result = await connectMetamask();
-  if (!result) return false;
-  const { signer } = result;
-
-  try {
-    const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
-    const tx = await tokenContract.approve(contractAddress, amountWei);
-    await tx.wait();
-    console.log("Approved tokens:", amountWei);
-    return true;
-  } catch (err) {
-    console.error("approveTokens error:", err);
-    // Вместо просто "Approve failed" выводим полную err.message:
-    alert("Approve failed: " + (err?.message || err));
-    return false;
-  }
-}
-
-async function submitScoreOnChain(finalScore) {
-  const result = await connectMetamask();
-  if (!result) return;
-  const { signer } = result;
-
-  try {
-    const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-    const tx = await faucetContract.submitScore(finalScore);
-    await tx.wait();
-
-    console.log("Score submitted on-chain:", finalScore);
-    alert("Score submitted successfully!");
-  } catch (err) {
-    console.error("submitScore error:", err);
-    alert("Failed to submit score");
-  }
-}
-
 async function loadTop10() {
   const result = await connectMetamask();
   if (!result) return;
@@ -110,7 +183,6 @@ async function loadTop10() {
       tokens: item.score.toString()
     }));
     console.log("Top-10 from contract:", leaderData);
-
     renderLeaderboard(leaderData, true);
   } catch (err) {
     console.error("loadTop10 error:", err);
@@ -124,11 +196,21 @@ async function loadTop10() {
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
   saveScoreBtn.addEventListener('click', async () => {
-    const priceWei = "1000000000000000000"; // 1 token
-    const ok = await approveTokens(priceWei);
-    if (ok) {
-      await submitScoreOnChain(score);
-      await loadTop10(); 
+    const result = await connectMetamask();
+    if (!result) return;
+    const { signer } = result;
+
+    try {
+      const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
+      const priceWei = ethers.utils.parseEther("1"); // 1 native token
+      const tx = await faucetContract.submitScore(score, { value: priceWei });
+      await tx.wait();
+      console.log("Score submitted on-chain:", score);
+      alert("Score submitted successfully!");
+      await loadTop10();
+    } catch (err) {
+      console.error("submitScore error:", err);
+      alert("Failed to submit score");
     }
   });
 }
@@ -190,7 +272,6 @@ function createBubble(type = 'random') {
     playSound('pop.mp3');
     score++;
     document.getElementById('score').textContent = score;
-
     renderLocalLeaderboard();
 
     setTimeout(() => {
@@ -278,11 +359,9 @@ function renderLeaderboard(leaderData, isChain = false) {
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = '';
 
-  // (isChain=false => локальный, isChain=true => контрактные)
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
     let displayName = item.user;
-    // (можно тут сравнить address, но мы убрали Web3Modal => оставим так)
 
     const userCell = document.createElement('td');
     userCell.textContent = displayName;
@@ -336,15 +415,12 @@ const connectWalletBtn = document.getElementById('connectWalletBtn');
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener('click', async () => {
     console.log("Connect Wallet clicked!");
-
-    // Вместо web3Modal => simple Metamask connect
     const result = await connectMetamask();
     if (!result) {
       alert("Could not connect to Metamask");
       return;
     }
     console.log("Wallet connected!");
-    // option: loadTop10() or do something
   });
 }
 
@@ -357,26 +433,21 @@ if (topRightControls) {
   topRightControls.style.pointerEvents = 'auto';
 }
 
-//new code for connected metamask 
+// New code for connected metamask - show short address
 connectWalletBtn.addEventListener('click', async () => {
   console.log("Connect Wallet clicked!");
-
   const result = await connectMetamask();
   if (!result) {
     alert("Could not connect to Metamask");
     return;
   }
-
-  // Получаем адрес, меняем текст кнопки
   const { signer } = result;
   const address = await signer.getAddress();
   connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
-  // Или просто: connectWalletBtn.textContent = "Connected!";
-
   console.log("Wallet connected:", address);
 });
 
-// Сокращённый вид адреса: 0x1234...abcd
+// Helper function to shorten address
 function shortAddress(addr) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
