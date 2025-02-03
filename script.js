@@ -30,26 +30,26 @@ let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
 
-// Локально храним “username” (из localStorage)
+// Храним локальный ник (если есть)
 let localUsername = localStorage.getItem('username') || "";
 
 /***********************
  * 3. Metamask Connection (on demand)
  ***********************/
 async function connectWallet() {
-  if (window.ethereum) {
-    try {
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      console.log("Wallet connected");
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      return { provider, signer };
-    } catch (err) {
-      console.error("User rejected the request:", err);
-      alert("Wallet connection rejected");
-    }
-  } else {
+  if (!window.ethereum) {
     alert("No Metamask found. Please install a wallet extension.");
+    return;
+  }
+  try {
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    console.log("Wallet connected");
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    return { provider, signer };
+  } catch (err) {
+    console.error("User rejected the request:", err);
+    alert("Wallet connection rejected");
   }
 }
 
@@ -104,7 +104,7 @@ async function loadTop10() {
     }));
     console.log("Top-10 from contract:", leaderData);
 
-    // Отрисуем chain-таблицу (isChain=true)
+    // Рендерим chain-данные
     renderLeaderboard(leaderData, true);
   } catch (err) {
     console.error("loadTop10 error:", err);
@@ -124,7 +124,7 @@ if (saveScoreBtn) {
     if (ok) {
       // 2) submitScore
       await submitScoreOnChain(score);
-      // 3) загрузить chain-лидерборд
+      // 3) load chain scoreboard
       await loadTop10();
     }
   });
@@ -133,7 +133,7 @@ if (saveScoreBtn) {
 /***********************
  * 6. GAME (BUBBLES)
  ***********************/
-// При загрузке создаём по 20 пузырьков каждого типа
+// Создаём 20 пузырьков каждого типа
 for (let i = 0; i < 20; i++) {
   createBubble('port');
   createBubble('Fearel');
@@ -184,16 +184,13 @@ function createBubble(type = 'random') {
   }
   moveBubble();
 
-  // Клик по пузырьку => увеличиваем score + обновляем таблицу
+  // Клик => score++, обновляем локальную таблицу
   bubble.addEventListener('click', () => {
     bubble.classList.add('pop');
     playSound('pop.mp3');
-
-    // +1 к score
     score++;
     document.getElementById('score').textContent = score;
 
-    // ОБНОВЛЯЕМ локальную таблицу
     renderLocalLeaderboard();
 
     setTimeout(() => {
@@ -224,19 +221,16 @@ const speedValue = document.getElementById('speedValue');
 const soundToggle = document.getElementById('soundToggle');
 const resetScoreBtn = document.getElementById('resetScoreBtn');
 
-// Start
 startBtn.addEventListener('click', () => {
   playSound('pop.mp3');
   menu.style.display = 'none';
 });
 
-// Settings
 settingsBtn.addEventListener('click', () => {
   playSound('pop.mp3');
   settingsModal.style.display = 'block';
 });
 
-// Close settings
 closeSettingsBtn.addEventListener('click', () => {
   settingsModal.style.display = 'none';
   applySettings();
@@ -262,7 +256,6 @@ function reSpawnGame() {
 resetScoreBtn.addEventListener('click', () => {
   score = 0;
   document.getElementById('score').textContent = score;
-  // При сбросе тоже перерисовываем локальную таблицу
   renderLocalLeaderboard();
 });
 
@@ -279,11 +272,6 @@ settingsIcon.addEventListener('click', () => {
 /***********************
  * 8. LEADERBOARD (TABLE)
  ***********************/
-/**
- * renderLeaderboard(leaderData, isChain=false)
- * - Если isChain=true, данные пришли из контракта
- *   => сравниваем адрес с нашим, если совпадает, подменяем user => localUsername
- */
 async function renderLeaderboard(leaderData, isChain = false) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
   if (!leaderboardBody) return;
@@ -326,12 +314,10 @@ const usernameContainer = document.getElementById('usernameContainer');
 const usernameInput = document.getElementById('usernameInput');
 const saveUsernameBtnField = document.getElementById('saveUsernameBtn');
 
-// При загрузке, восстанавливаем ник
 if (localUsername) {
   usernameInput.value = localUsername;
 }
 
-// При “Save” (ник)
 saveUsernameBtnField.addEventListener('click', () => {
   const name = usernameInput.value.trim();
   if (!name) {
@@ -341,20 +327,16 @@ saveUsernameBtnField.addEventListener('click', () => {
   localUsername = name;
   localStorage.setItem('username', name);
   alert(`Username "${name}" saved locally!`);
-
-  // Обновим локальную таблицу (ник + текущий score)
   renderLocalLeaderboard();
 });
 
-/** Локальная таблица: {user: localUsername, tokens: score} */
 function renderLocalLeaderboard() {
   const data = [];
   if (localUsername) {
     data.push({ user: localUsername, tokens: score });
   }
-  // isChain = false
   renderLeaderboard(data, false);
 }
 
-// При загрузке покажем локальную таблицу, если есть ник
+// Изначально рендерим локальную таблицу
 renderLocalLeaderboard();
