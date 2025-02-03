@@ -175,25 +175,22 @@ let score = 0;
 let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
-
 let localUsername = localStorage.getItem('username') || "";
 
 /***********************
- * 3. CONNECT METAMASK (SIMPLE)
+ * 3. CONNECT METAMASK
  ***********************/
 async function connectMetamask() {
   if (!window.ethereum) {
-    alert("Metamask not found. Please install a wallet extension.");
+    alert("Metamask not found. Please install it.");
     return null;
   }
   try {
     await window.ethereum.request({ method: 'eth_requestAccounts' });
-    console.log("Wallet connected!");
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     return { provider, signer };
   } catch (err) {
-    console.error("User rejected request:", err);
     alert("Wallet connection rejected");
     return null;
   }
@@ -206,40 +203,41 @@ async function loadTop10() {
   const result = await connectMetamask();
   if (!result) return;
   const { signer } = result;
-
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
     const signerAddress = await signer.getAddress();
 
-    const leaderData = top.map(item => {
-      let displayName = item.player;
-      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
-        displayName = localUsername;
-      }
-      return {
-        user: displayName,
-        tokens: item.score.toString()
-      };
-    });
+    // Ставим on-chain ник (если есть) вместо адреса
+    const leaderData = await Promise.all(
+      top.map(async (item) => {
+        let chainName = await faucetContract.userNames(item.player);
+        if (!chainName) chainName = shortAddress(item.player);
+        // Если это адрес пользователя, а локально есть ник, оставим локальный (необязательно)
+        if (item.player.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
+          chainName = localUsername;
+        }
+        return {
+          user: chainName,
+          tokens: item.score.toString()
+        };
+      })
+    );
 
-    console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData, true);
 
     const best = await faucetContract.scores(signerAddress);
-    console.log("Your best on-chain score:", best.toString());
     const bestScoreEl = document.getElementById('myBestScore');
     if (bestScoreEl) {
       bestScoreEl.textContent = "Your best score: " + best.toString();
     }
   } catch (err) {
-    console.error("loadTop10 error:", err);
     alert("Failed to load leaderboard");
   }
 }
 
 /***********************
- * 5. BUTTON "SAVE SCORE" (NATIVE PAYMENT)
+ * 5. SAVE SCORE
  ***********************/
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
@@ -247,18 +245,14 @@ if (saveScoreBtn) {
     const result = await connectMetamask();
     if (!result) return;
     const { signer } = result;
-
     try {
       const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-      const priceWei = ethers.utils.parseEther("1"); // 1 native token
+      const priceWei = ethers.utils.parseEther("1"); 
       const tx = await faucetContract.submitScore(score, { value: priceWei });
       await tx.wait();
-      console.log("Score submitted on-chain:", score);
       alert("Score submitted successfully!");
-
       await loadTop10();
-    } catch (err) {
-      console.error("submitScore error:", err);
+    } catch {
       alert("Failed to submit score");
     }
   });
@@ -275,7 +269,6 @@ for (let i = 0; i < 20; i++) {
 
 function createBubble(type = 'random') {
   const bubble = document.createElement('div');
-
   if (type === 'random') {
     const rnd = Math.random();
     if (rnd < 0.33) bubble.classList.add('bubble', 'port');
@@ -284,7 +277,6 @@ function createBubble(type = 'random') {
   } else {
     bubble.classList.add('bubble', type);
   }
-
   bubble.style.top = `${Math.random() * 80}vh`;
   bubble.style.left = `${Math.random() * 80}vw`;
   document.querySelector('.bubble-container').appendChild(bubble);
@@ -296,23 +288,14 @@ function createBubble(type = 'random') {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector('.bubble-container').getBoundingClientRect();
 
-    if (bubbleRect.left <= containerRect.left) {
-      deltaX = Math.abs(deltaX);
-    } else if (bubbleRect.right >= containerRect.right) {
-      deltaX = -Math.abs(deltaX);
-    }
-    if (bubbleRect.top <= containerRect.top) {
-      deltaY = Math.abs(deltaY);
-    } else if (bubbleRect.bottom >= containerRect.bottom) {
-      deltaY = -Math.abs(deltaY);
-    }
+    if (bubbleRect.left <= containerRect.left) deltaX = Math.abs(deltaX);
+    else if (bubbleRect.right >= containerRect.right) deltaX = -Math.abs(deltaX);
+    if (bubbleRect.top <= containerRect.top) deltaY = Math.abs(deltaY);
+    else if (bubbleRect.bottom >= containerRect.bottom) deltaY = -Math.abs(deltaY);
 
     bubble.style.left = `${bubble.offsetLeft + deltaX}px`;
     bubble.style.top = `${bubble.offsetTop + deltaY}px`;
-
-    if (!bubble.classList.contains('pop')) {
-      requestAnimationFrame(moveBubble);
-    }
+    if (!bubble.classList.contains('pop')) requestAnimationFrame(moveBubble);
   }
   moveBubble();
 
@@ -322,7 +305,6 @@ function createBubble(type = 'random') {
     score++;
     document.getElementById('score').textContent = score;
     renderLocalLeaderboard();
-
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
@@ -332,8 +314,7 @@ function createBubble(type = 'random') {
 
 function playSound(soundFile) {
   if (!soundOn) return;
-  const audio = new Audio(soundFile);
-  audio.play();
+  new Audio(soundFile).play();
 }
 
 /***********************
@@ -344,7 +325,6 @@ const startBtn = document.getElementById('startBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-
 const bubbleCountSelect = document.getElementById('bubbleCount');
 const speedRange = document.getElementById('speedRange');
 const speedValue = document.getElementById('speedValue');
@@ -374,8 +354,7 @@ function applySettings() {
 }
 
 function reSpawnGame() {
-  const allBubbles = document.querySelectorAll('.bubble');
-  allBubbles.forEach(b => b.remove());
+  document.querySelectorAll('.bubble').forEach(b => b.remove());
   for (let i = 0; i < currentBubbleCount; i++) {
     createBubble('port');
     createBubble('Fearel');
@@ -400,31 +379,27 @@ settingsIcon.addEventListener('click', () => {
 });
 
 /***********************
- * 8. LEADERBOARD (TABLE)
+ * 8. LEADERBOARD
  ***********************/
-function renderLeaderboard(leaderData, isChain = false) {
+function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = '';
-
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
     const userCell = document.createElement('td');
     userCell.textContent = item.user;
     row.appendChild(userCell);
-
     const tokensCell = document.createElement('td');
     tokensCell.textContent = item.tokens;
     row.appendChild(tokensCell);
-
     leaderboardBody.appendChild(row);
   });
 }
 
 /***********************
- * 9. USERNAME (LOCAL)
+ * 9. USERNAME (ON-CHAIN)
  ***********************/
-const usernameContainer = document.getElementById('usernameContainer');
 const usernameInput = document.getElementById('usernameInput');
 const saveUsernameBtnField = document.getElementById('saveUsernameBtn');
 
@@ -432,63 +407,56 @@ if (localUsername) {
   usernameInput.value = localUsername;
 }
 
-saveUsernameBtnField.addEventListener('click', () => {
+saveUsernameBtnField.addEventListener('click', async () => {
   const name = usernameInput.value.trim();
-  if (!name) {
-    alert("Enter a valid username!");
-    return;
-  }
+  if (!name) return alert("Enter a valid username!");
+
   localUsername = name;
   localStorage.setItem('username', name);
-  alert(`Username "${name}" saved locally!`);
+
+  // Запишем имя в контракт
+  const result = await connectMetamask();
+  if (!result) return;
+  const { signer } = result;
+  try {
+    const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
+    const tx = await faucetContract.setUsername(name);
+    await tx.wait();
+    alert(`Username "${name}" saved on-chain!`);
+  } catch {
+    alert("Failed to save username on-chain");
+  }
   renderLocalLeaderboard();
 });
 
 function renderLocalLeaderboard() {
   const data = [];
-  if (localUsername) {
-    data.push({ user: localUsername, tokens: score });
-  }
-  renderLeaderboard(data, false);
+  if (localUsername) data.push({ user: localUsername, tokens: score });
+  renderLeaderboard(data);
 }
-renderLocalLeaderboard();
 
 /***********************
- * 10. CONNECT WALLET BUTTON (Metamask)
+ * 10. CONNECT WALLET
  ***********************/
 const connectWalletBtn = document.getElementById('connectWalletBtn');
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener('click', async () => {
-    console.log("Connect Wallet clicked!");
     const result = await connectMetamask();
-    if (!result) {
-      alert("Could not connect to Metamask");
-      return;
-    }
-    console.log("Wallet connected!");
+    if (!result) return;
+    const { signer } = result;
+    const address = await signer.getAddress();
+    connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
   });
 }
 
 /**********************************************
- * 11. MAKE SURE THE BUTTON IS ABOVE THE MENU
+ * 11. Z-INDEX FIX
  **********************************************/
 const topRightControls = document.querySelector('.top-right-controls');
 if (topRightControls) {
   topRightControls.style.zIndex = '10001';
   topRightControls.style.pointerEvents = 'auto';
 }
-
-connectWalletBtn.addEventListener('click', async () => {
-  const result = await connectMetamask();
-  if (!result) {
-    alert("Could not connect to Metamask");
-    return;
-  }
-  const { signer } = result;
-  const address = await signer.getAddress();
-  connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
-  console.log("Wallet connected:", address);
-});
 
 function shortAddress(addr) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
