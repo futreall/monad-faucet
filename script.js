@@ -175,7 +175,6 @@ let score = 0;
 let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
-
 let localUsername = localStorage.getItem('username') || "";
 
 /***********************
@@ -215,19 +214,14 @@ async function loadTop10() {
     const leaderData = await Promise.all(
       top.map(async (item) => {
         let chainName = await faucetContract.userNames(item.player);
-        // Пустой ник -> показываем короткий адрес
         if (!chainName) chainName = shortAddress(item.player);
-        return {
-          user: chainName,
-          tokens: item.score.toString()
-        };
+        return { user: chainName, tokens: item.score.toString() };
       })
     );
 
-    console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData);
 
-    // (Необязательно) показать лучший счёт для текущего адреса
+    // Показать лучший счёт для подключенного кошелька (необязательно)
     const signerAddress = await signer.getAddress();
     const best = await faucetContract.scores(signerAddress);
     console.log("Your best on-chain score:", best.toString());
@@ -253,14 +247,10 @@ if (saveScoreBtn) {
 
     try {
       const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-      // 1 native token в wei
       const priceWei = ethers.utils.parseEther("1");
       const tx = await faucetContract.submitScore(score, { value: priceWei });
       await tx.wait();
-      console.log("Score submitted on-chain:", score);
       alert("Score submitted successfully!");
-
-      // Обновить таблицу топ-10
       await loadTop10();
     } catch (err) {
       console.error("submitScore error:", err);
@@ -301,7 +291,6 @@ function createBubble(type = 'random') {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector('.bubble-container').getBoundingClientRect();
 
-    // Отражение от стен
     if (bubbleRect.left <= containerRect.left) deltaX = Math.abs(deltaX);
     else if (bubbleRect.right >= containerRect.right) deltaX = -Math.abs(deltaX);
     if (bubbleRect.top <= containerRect.top) deltaY = Math.abs(deltaY);
@@ -310,23 +299,16 @@ function createBubble(type = 'random') {
     bubble.style.left = `${bubble.offsetLeft + deltaX}px`;
     bubble.style.top = `${bubble.offsetTop + deltaY}px`;
 
-    if (!bubble.classList.contains('pop')) {
-      requestAnimationFrame(moveBubble);
-    }
+    if (!bubble.classList.contains('pop')) requestAnimationFrame(moveBubble);
   }
   moveBubble();
 
-  // Клик по пузырьку
   bubble.addEventListener('click', () => {
     bubble.classList.add('pop');
     playSound('pop.mp3');
     score++;
     document.getElementById('score').textContent = score;
-
-    // Раньше тут вызывалась renderLocalLeaderboard(), которая портила таблицу.
-    // Убираем/комментируем, чтобы не затирать цепочной топ-10:
-    // renderLocalLeaderboard();
-
+    // Раньше было renderLocalLeaderboard(), убрали чтобы не затирать таблицу
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
@@ -378,8 +360,7 @@ function applySettings() {
 }
 
 function reSpawnGame() {
-  const allBubbles = document.querySelectorAll('.bubble');
-  allBubbles.forEach(b => b.remove());
+  document.querySelectorAll('.bubble').forEach(b => b.remove());
   for (let i = 0; i < currentBubbleCount; i++) {
     createBubble('port');
     createBubble('Fearel');
@@ -390,8 +371,6 @@ function reSpawnGame() {
 resetScoreBtn.addEventListener('click', () => {
   score = 0;
   document.getElementById('score').textContent = score;
-  // Можете здесь просто локально сбросить, 
-  // без перерендера всей таблицы, чтобы не затирать топ-10.
 });
 
 speedRange.addEventListener('input', () => {
@@ -474,6 +453,9 @@ if (connectWalletBtn) {
     const { signer } = result;
     const address = await signer.getAddress();
     connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
+
+    // При успешном подключении сразу грузим топ-10:
+    await loadTop10();
   });
 }
 
