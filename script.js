@@ -354,3 +354,27 @@ if (topRightControls) {
   topRightControls.style.zIndex = '10001';
   topRightControls.style.pointerEvents = 'auto';
 }
+
+//new code for connected metamask 
+connectWalletBtn.addEventListener('click', async () => {
+  console.log("Connect Wallet clicked!");
+
+  const result = await connectMetamask();
+  if (!result) {
+    alert("Could not connect to Metamask");
+    return;
+  }
+
+  // Получаем адрес, меняем текст кнопки
+  const { signer } = result;
+  const address = await signer.getAddress();
+  connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
+  // Или просто: connectWalletBtn.textContent = "Connected!";
+
+  console.log("Wallet connected:", address);
+});
+
+// Сокращённый вид адреса: 0x1234...abcd
+function shortAddress(addr) {
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
