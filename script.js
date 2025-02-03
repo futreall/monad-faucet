@@ -168,7 +168,7 @@ async function connectMetamask() {
 }
 
 /***********************
- * 4. LOAD TOP-10 (WITH USERNAME MATCH)
+ * 4. LOAD TOP-10
  ***********************/
 async function loadTop10() {
   const result = await connectMetamask();
@@ -178,17 +178,10 @@ async function loadTop10() {
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
-    const signerAddress = await signer.getAddress();
-    const leaderData = top.map(item => {
-      let displayName = item.player;
-      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
-        displayName = localUsername;
-      }
-      return {
-        user: displayName,
-        tokens: item.score.toString()
-      };
-    });
+    const leaderData = top.map(item => ({
+      user: item.player,
+      tokens: item.score.toString()
+    }));
     console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData, true);
   } catch (err) {
@@ -198,7 +191,7 @@ async function loadTop10() {
 }
 
 /***********************
- * 5. BUTTON "SAVE SCORE" (NATIVE PAYMENT)
+ * 5. BUTTON "SAVE SCORE"
  ***********************/
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
@@ -369,6 +362,7 @@ function renderLeaderboard(leaderData, isChain = false) {
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
     let displayName = item.user;
+
     const userCell = document.createElement('td');
     userCell.textContent = displayName;
     row.appendChild(userCell);
@@ -453,7 +447,7 @@ connectWalletBtn.addEventListener('click', async () => {
   console.log("Wallet connected:", address);
 });
 
-// Helper to shorten address
+// Helper function to shorten address
 function shortAddress(addr) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
