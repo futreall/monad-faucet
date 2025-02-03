@@ -175,48 +175,48 @@ let score = 0;
 let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
+
 let localUsername = localStorage.getItem('username') || "";
 
 /***********************
- * 3. CONNECT METAMASK
+ * 3. CONNECT METAMASK (SIMPLE)
  ***********************/
 async function connectMetamask() {
   if (!window.ethereum) {
-    alert("Metamask not found. Please install it.");
+    alert("Metamask not found. Please install a wallet extension.");
     return null;
   }
   try {
     await window.ethereum.request({ method: 'eth_requestAccounts' });
+    console.log("Wallet connected!");
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     return { provider, signer };
   } catch (err) {
+    console.error("User rejected request:", err);
     alert("Wallet connection rejected");
     return null;
   }
 }
 
 /***********************
- * 4. LOAD TOP-10
+ * 4. LOAD TOP-10 (CHAIN)
  ***********************/
 async function loadTop10() {
   const result = await connectMetamask();
   if (!result) return;
   const { signer } = result;
+
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
-    const signerAddress = await signer.getAddress();
 
-    // Ставим on-chain ник (если есть) вместо адреса
+    // Для каждого участника берём userName из контракта
     const leaderData = await Promise.all(
       top.map(async (item) => {
         let chainName = await faucetContract.userNames(item.player);
+        // Пустой ник -> показываем короткий адрес
         if (!chainName) chainName = shortAddress(item.player);
-        // Если это адрес пользователя, а локально есть ник, оставим локальный (необязательно)
-        if (item.player.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
-          chainName = localUsername;
-        }
         return {
           user: chainName,
           tokens: item.score.toString()
@@ -224,20 +224,25 @@ async function loadTop10() {
       })
     );
 
-    renderLeaderboard(leaderData, true);
+    console.log("Top-10 from contract:", leaderData);
+    renderLeaderboard(leaderData);
 
+    // (Необязательно) показать лучший счёт для текущего адреса
+    const signerAddress = await signer.getAddress();
     const best = await faucetContract.scores(signerAddress);
+    console.log("Your best on-chain score:", best.toString());
     const bestScoreEl = document.getElementById('myBestScore');
     if (bestScoreEl) {
       bestScoreEl.textContent = "Your best score: " + best.toString();
     }
   } catch (err) {
+    console.error("loadTop10 error:", err);
     alert("Failed to load leaderboard");
   }
 }
 
 /***********************
- * 5. SAVE SCORE
+ * 5. BUTTON "SAVE SCORE" (NATIVE PAYMENT)
  ***********************/
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
@@ -245,14 +250,20 @@ if (saveScoreBtn) {
     const result = await connectMetamask();
     if (!result) return;
     const { signer } = result;
+
     try {
       const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-      const priceWei = ethers.utils.parseEther("1"); 
+      // 1 native token в wei
+      const priceWei = ethers.utils.parseEther("1");
       const tx = await faucetContract.submitScore(score, { value: priceWei });
       await tx.wait();
+      console.log("Score submitted on-chain:", score);
       alert("Score submitted successfully!");
+
+      // Обновить таблицу топ-10
       await loadTop10();
-    } catch {
+    } catch (err) {
+      console.error("submitScore error:", err);
       alert("Failed to submit score");
     }
   });
@@ -269,6 +280,7 @@ for (let i = 0; i < 20; i++) {
 
 function createBubble(type = 'random') {
   const bubble = document.createElement('div');
+
   if (type === 'random') {
     const rnd = Math.random();
     if (rnd < 0.33) bubble.classList.add('bubble', 'port');
@@ -277,6 +289,7 @@ function createBubble(type = 'random') {
   } else {
     bubble.classList.add('bubble', type);
   }
+
   bubble.style.top = `${Math.random() * 80}vh`;
   bubble.style.left = `${Math.random() * 80}vw`;
   document.querySelector('.bubble-container').appendChild(bubble);
@@ -288,6 +301,7 @@ function createBubble(type = 'random') {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector('.bubble-container').getBoundingClientRect();
 
+    // Отражение от стен
     if (bubbleRect.left <= containerRect.left) deltaX = Math.abs(deltaX);
     else if (bubbleRect.right >= containerRect.right) deltaX = -Math.abs(deltaX);
     if (bubbleRect.top <= containerRect.top) deltaY = Math.abs(deltaY);
@@ -295,16 +309,24 @@ function createBubble(type = 'random') {
 
     bubble.style.left = `${bubble.offsetLeft + deltaX}px`;
     bubble.style.top = `${bubble.offsetTop + deltaY}px`;
-    if (!bubble.classList.contains('pop')) requestAnimationFrame(moveBubble);
+
+    if (!bubble.classList.contains('pop')) {
+      requestAnimationFrame(moveBubble);
+    }
   }
   moveBubble();
 
+  // Клик по пузырьку
   bubble.addEventListener('click', () => {
     bubble.classList.add('pop');
     playSound('pop.mp3');
     score++;
     document.getElementById('score').textContent = score;
-    renderLocalLeaderboard();
+
+    // Раньше тут вызывалась renderLocalLeaderboard(), которая портила таблицу.
+    // Убираем/комментируем, чтобы не затирать цепочной топ-10:
+    // renderLocalLeaderboard();
+
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
@@ -314,7 +336,8 @@ function createBubble(type = 'random') {
 
 function playSound(soundFile) {
   if (!soundOn) return;
-  new Audio(soundFile).play();
+  const audio = new Audio(soundFile);
+  audio.play();
 }
 
 /***********************
@@ -325,6 +348,7 @@ const startBtn = document.getElementById('startBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
 const bubbleCountSelect = document.getElementById('bubbleCount');
 const speedRange = document.getElementById('speedRange');
 const speedValue = document.getElementById('speedValue');
@@ -354,7 +378,8 @@ function applySettings() {
 }
 
 function reSpawnGame() {
-  document.querySelectorAll('.bubble').forEach(b => b.remove());
+  const allBubbles = document.querySelectorAll('.bubble');
+  allBubbles.forEach(b => b.remove());
   for (let i = 0; i < currentBubbleCount; i++) {
     createBubble('port');
     createBubble('Fearel');
@@ -365,7 +390,8 @@ function reSpawnGame() {
 resetScoreBtn.addEventListener('click', () => {
   score = 0;
   document.getElementById('score').textContent = score;
-  renderLocalLeaderboard();
+  // Можете здесь просто локально сбросить, 
+  // без перерендера всей таблицы, чтобы не затирать топ-10.
 });
 
 speedRange.addEventListener('input', () => {
@@ -379,20 +405,23 @@ settingsIcon.addEventListener('click', () => {
 });
 
 /***********************
- * 8. LEADERBOARD
+ * 8. LEADERBOARD (TABLE)
  ***********************/
 function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = '';
+
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
     const userCell = document.createElement('td');
     userCell.textContent = item.user;
     row.appendChild(userCell);
+
     const tokensCell = document.createElement('td');
     tokensCell.textContent = item.tokens;
     row.appendChild(tokensCell);
+
     leaderboardBody.appendChild(row);
   });
 }
@@ -409,12 +438,14 @@ if (localUsername) {
 
 saveUsernameBtnField.addEventListener('click', async () => {
   const name = usernameInput.value.trim();
-  if (!name) return alert("Enter a valid username!");
-
+  if (!name) {
+    alert("Enter a valid username!");
+    return;
+  }
   localUsername = name;
   localStorage.setItem('username', name);
 
-  // Запишем имя в контракт
+  // Записываем имя в контракт
   const result = await connectMetamask();
   if (!result) return;
   const { signer } = result;
@@ -423,26 +454,23 @@ saveUsernameBtnField.addEventListener('click', async () => {
     const tx = await faucetContract.setUsername(name);
     await tx.wait();
     alert(`Username "${name}" saved on-chain!`);
-  } catch {
+  } catch (err) {
+    console.error(err);
     alert("Failed to save username on-chain");
   }
-  renderLocalLeaderboard();
 });
 
-function renderLocalLeaderboard() {
-  const data = [];
-  if (localUsername) data.push({ user: localUsername, tokens: score });
-  renderLeaderboard(data);
-}
-
 /***********************
- * 10. CONNECT WALLET
+ * 10. CONNECT WALLET BUTTON (Metamask)
  ***********************/
 const connectWalletBtn = document.getElementById('connectWalletBtn');
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener('click', async () => {
     const result = await connectMetamask();
-    if (!result) return;
+    if (!result) {
+      alert("Could not connect to Metamask");
+      return;
+    }
     const { signer } = result;
     const address = await signer.getAddress();
     connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
@@ -450,7 +478,7 @@ if (connectWalletBtn) {
 }
 
 /**********************************************
- * 11. Z-INDEX FIX
+ * 11. MAKE SURE THE BUTTON IS ABOVE THE MENU
  **********************************************/
 const topRightControls = document.querySelector('.top-right-controls');
 if (topRightControls) {
