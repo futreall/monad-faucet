@@ -1,13 +1,12 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-// Faucet contract
 const contractAddress = "0xa0f4c7218a5f5dcb999cd6317be6027e70fdc8f4"; 
 const contractABI = [
-  // ... ABI (submitScore, getTop10, etc.) ...
+  // ... ABI ...
 ];
 
-// ERC-20 token (для approve)
+// ERC-20 token
 const tokenAddress = "0x044789496dE6BFfC78A56965d582B08a2045BeB5"; 
 const tokenAbi = [
   {
@@ -30,26 +29,34 @@ let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
 
-// Храним локальный ник (если есть)
 let localUsername = localStorage.getItem('username') || "";
 
 /***********************
- * 3. Metamask Connection (on demand)
+ * 3. WEB3MODAL INIT
  ***********************/
-async function connectWallet() {
-  if (!window.ethereum) {
-    alert("No Metamask found. Please install a wallet extension.");
-    return;
+let web3Modal;
+
+function initWeb3Modal() {
+  const providerOptions = {}; 
+  web3Modal = new window.Web3Modal.default({
+    cacheProvider: false,
+    providerOptions
+  });
+}
+
+async function connectWalletWeb3Modal() {
+  if (!web3Modal) {
+    initWeb3Modal();
   }
   try {
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-    console.log("Wallet connected");
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const instance = await web3Modal.connect();
+    const provider = new ethers.providers.Web3Provider(instance);
     const signer = provider.getSigner();
     return { provider, signer };
   } catch (err) {
-    console.error("User rejected the request:", err);
+    console.error("User rejected or error:", err);
     alert("Wallet connection rejected");
+    return {};
   }
 }
 
@@ -58,7 +65,7 @@ async function connectWallet() {
  ***********************/
 async function approveTokens(amountWei) {
   try {
-    const { signer } = await connectWallet();
+    const { signer } = await connectWalletWeb3Modal();
     if (!signer) return false;
 
     const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
@@ -75,7 +82,7 @@ async function approveTokens(amountWei) {
 
 async function submitScoreOnChain(finalScore) {
   try {
-    const { signer } = await connectWallet();
+    const { signer } = await connectWalletWeb3Modal();
     if (!signer) return;
 
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
@@ -92,19 +99,17 @@ async function submitScoreOnChain(finalScore) {
 
 async function loadTop10() {
   try {
-    const { signer } = await connectWallet();
+    const { signer } = await connectWalletWeb3Modal();
     if (!signer) return;
 
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
-    // Преобразуем [{player, score}] -> [{user, tokens}]
     const leaderData = top.map(item => ({
       user: item.player,
       tokens: item.score.toString()
     }));
     console.log("Top-10 from contract:", leaderData);
 
-    // Рендерим chain-данные
     renderLeaderboard(leaderData, true);
   } catch (err) {
     console.error("loadTop10 error:", err);
@@ -118,13 +123,10 @@ async function loadTop10() {
 const saveScoreBtn = document.getElementById('saveScoreBtn');
 if (saveScoreBtn) {
   saveScoreBtn.addEventListener('click', async () => {
-    const priceWei = "1000000000000000000"; // 1 токен (18 decimals)
-    // 1) approve
+    const priceWei = "1000000000000000000"; // 1 token
     const ok = await approveTokens(priceWei);
     if (ok) {
-      // 2) submitScore
       await submitScoreOnChain(score);
-      // 3) load chain scoreboard
       await loadTop10();
     }
   });
@@ -133,7 +135,6 @@ if (saveScoreBtn) {
 /***********************
  * 6. GAME (BUBBLES)
  ***********************/
-// Создаём 20 пузырьков каждого типа
 for (let i = 0; i < 20; i++) {
   createBubble('port');
   createBubble('Fearel');
@@ -163,7 +164,6 @@ function createBubble(type = 'random') {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector('.bubble-container').getBoundingClientRect();
 
-    // Отталкивание от краёв
     if (bubbleRect.left <= containerRect.left) {
       deltaX = Math.abs(deltaX);
     } else if (bubbleRect.right >= containerRect.right) {
@@ -184,7 +184,6 @@ function createBubble(type = 'random') {
   }
   moveBubble();
 
-  // Клик => score++, обновляем локальную таблицу
   bubble.addEventListener('click', () => {
     bubble.classList.add('pop');
     playSound('pop.mp3');
@@ -223,6 +222,7 @@ const resetScoreBtn = document.getElementById('resetScoreBtn');
 
 startBtn.addEventListener('click', () => {
   playSound('pop.mp3');
+  console.log("Start clicked -> hiding menu");
   menu.style.display = 'none';
 });
 
@@ -280,7 +280,7 @@ async function renderLeaderboard(leaderData, isChain = false) {
   let myAddress = null;
   if (isChain) {
     try {
-      const { signer } = await connectWallet();
+      const { signer } = await connectWalletWeb3Modal();
       if (signer) {
         myAddress = (await signer.getAddress()).toLowerCase();
       }
@@ -291,6 +291,7 @@ async function renderLeaderboard(leaderData, isChain = false) {
     const row = document.createElement('tr');
     let displayName = item.user;
 
+    // Если наш address совпадает -> подменим ник на localUsername
     if (isChain && localUsername && myAddress && item.user.toLowerCase() === myAddress) {
       displayName = localUsername;
     }
@@ -337,6 +338,32 @@ function renderLocalLeaderboard() {
   }
   renderLeaderboard(data, false);
 }
-
-// Изначально рендерим локальную таблицу
+// При загрузке — локальная таблица
 renderLocalLeaderboard();
+
+/***********************
+ * 10. CONNECT WALLET BUTTON
+ ***********************/
+const connectWalletBtn = document.getElementById('connectWalletBtn');
+if (connectWalletBtn) {
+  connectWalletBtn.addEventListener('click', async () => {
+    console.log("Connect Wallet clicked!");
+
+    const { signer } = await connectWalletWeb3Modal();
+    if (!signer) {
+      alert("Wallet not connected");
+      return;
+    }
+    console.log("Wallet connected!");
+    // optionally loadTop10() or do something
+  });
+}
+
+/**********************************************
+ * 11. MAKE SURE THE BUTTON IS ABOVE THE MENU
+ **********************************************/
+const topRightControls = document.querySelector('.top-right-controls');
+if (topRightControls) {
+  topRightControls.style.zIndex = '10001';
+  topRightControls.style.pointerEvents = 'auto';
+}
