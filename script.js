@@ -32,31 +32,27 @@ let soundOn = true;
 let localUsername = localStorage.getItem('username') || "";
 
 /***********************
- * 3. WEB3MODAL INIT
+ * 3. CONNECT METAMASK (SIMPLE)
  ***********************/
-let web3Modal;
-
-function initWeb3Modal() {
-  const providerOptions = {}; 
-  web3Modal = new window.Web3Modal.default({
-    cacheProvider: false,
-    providerOptions
-  });
-}
-
-async function connectWalletWeb3Modal() {
-  if (!web3Modal) {
-    initWeb3Modal();
+async function connectMetamask() {
+  if (!window.ethereum) {
+    alert("Metamask not found. Please install a wallet extension.");
+    return null;
   }
   try {
-    const instance = await web3Modal.connect();
-    const provider = new ethers.providers.Web3Provider(instance);
+    // Запрашиваем доступ к аккаунтам
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    console.log("Wallet connected!");
+
+    // Создаём ethers-провайдер
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
+
     return { provider, signer };
   } catch (err) {
-    console.error("User rejected or error:", err);
+    console.error("User rejected request:", err);
     alert("Wallet connection rejected");
-    return {};
+    return null;
   }
 }
 
@@ -64,10 +60,11 @@ async function connectWalletWeb3Modal() {
  * 4. APPROVE + SUBMIT + LOADTOP10
  ***********************/
 async function approveTokens(amountWei) {
-  try {
-    const { signer } = await connectWalletWeb3Modal();
-    if (!signer) return false;
+  const result = await connectMetamask();
+  if (!result) return false;
+  const { signer } = result;
 
+  try {
     const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
     const tx = await tokenContract.approve(contractAddress, amountWei);
     await tx.wait();
@@ -81,10 +78,11 @@ async function approveTokens(amountWei) {
 }
 
 async function submitScoreOnChain(finalScore) {
-  try {
-    const { signer } = await connectWalletWeb3Modal();
-    if (!signer) return;
+  const result = await connectMetamask();
+  if (!result) return;
+  const { signer } = result;
 
+  try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const tx = await faucetContract.submitScore(finalScore);
     await tx.wait();
@@ -98,10 +96,11 @@ async function submitScoreOnChain(finalScore) {
 }
 
 async function loadTop10() {
-  try {
-    const { signer } = await connectWalletWeb3Modal();
-    if (!signer) return;
+  const result = await connectMetamask();
+  if (!result) return;
+  const { signer } = result;
 
+  try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
     const leaderData = top.map(item => ({
@@ -127,7 +126,7 @@ if (saveScoreBtn) {
     const ok = await approveTokens(priceWei);
     if (ok) {
       await submitScoreOnChain(score);
-      await loadTop10();
+      await loadTop10(); 
     }
   });
 }
@@ -272,29 +271,16 @@ settingsIcon.addEventListener('click', () => {
 /***********************
  * 8. LEADERBOARD (TABLE)
  ***********************/
-async function renderLeaderboard(leaderData, isChain = false) {
+function renderLeaderboard(leaderData, isChain = false) {
   const leaderboardBody = document.querySelector('#leaderboard tbody');
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = '';
 
-  let myAddress = null;
-  if (isChain) {
-    try {
-      const { signer } = await connectWalletWeb3Modal();
-      if (signer) {
-        myAddress = (await signer.getAddress()).toLowerCase();
-      }
-    } catch(e) {}
-  }
-
+  // (isChain=false => локальный, isChain=true => контрактные)
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
     let displayName = item.user;
-
-    // Если наш address совпадает -> подменим ник на localUsername
-    if (isChain && localUsername && myAddress && item.user.toLowerCase() === myAddress) {
-      displayName = localUsername;
-    }
+    // (можно тут сравнить address, но мы убрали Web3Modal => оставим так)
 
     const userCell = document.createElement('td');
     userCell.textContent = displayName;
@@ -342,20 +328,21 @@ function renderLocalLeaderboard() {
 renderLocalLeaderboard();
 
 /***********************
- * 10. CONNECT WALLET BUTTON
+ * 10. CONNECT WALLET BUTTON (Metamask)
  ***********************/
 const connectWalletBtn = document.getElementById('connectWalletBtn');
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener('click', async () => {
     console.log("Connect Wallet clicked!");
 
-    const { signer } = await connectWalletWeb3Modal();
-    if (!signer) {
-      alert("Wallet not connected");
+    // Вместо web3Modal => simple Metamask connect
+    const result = await connectMetamask();
+    if (!result) {
+      alert("Could not connect to Metamask");
       return;
     }
     console.log("Wallet connected!");
-    // optionally loadTop10() or do something
+    // option: loadTop10() or do something
   });
 }
 
