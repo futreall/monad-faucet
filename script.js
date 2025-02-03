@@ -1,43 +1,20 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0xb7f3bc3a945efffc0680eff53e3efbe70651a5ba"; 
+const contractAddress = "0x121af877c249ab6b950634026c8251baa9226a1e"; 
 const contractABI = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "_price",
-        "type": "uint256"
+        "internalType": "string",
+        "name": "newName",
+        "type": "string"
       }
     ],
+    "name": "setUsername",
+    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "score",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "ScoreSubmitted",
-    "type": "event"
+    "type": "function"
   },
   {
     "inputs": [
@@ -55,6 +32,17 @@ const contractABI = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address payable",
         "name": "to",
         "type": "address"
@@ -63,65 +51,6 @@ const contractABI = [
     "name": "withdrawNative",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "allScores",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "score",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "time",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllScores",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "player",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "score",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "time",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Faucet.ScoreRecord[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -217,6 +146,25 @@ const contractABI = [
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "userNames",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
@@ -278,7 +226,6 @@ async function loadTop10() {
     console.log("Top-10 from contract:", leaderData);
     renderLeaderboard(leaderData, true);
 
-    // Выведем лучший счёт для текущего адреса
     const best = await faucetContract.scores(signerAddress);
     console.log("Your best on-chain score:", best.toString());
     const bestScoreEl = document.getElementById('myBestScore');
@@ -289,68 +236,6 @@ async function loadTop10() {
     console.error("loadTop10 error:", err);
     alert("Failed to load leaderboard");
   }
-}
-
-/***********************
- * 4b. LOAD ALL SCORES (FULL HISTORY)
- ***********************/
-async function loadAllScores() {
-  const result = await connectMetamask();
-  if (!result) return;
-  const { signer } = result;
-
-  try {
-    const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-    const all = await faucetContract.getAllScores();
-    const signerAddress = await signer.getAddress();
-
-    // Преобразуем массив для рендера (включая время)
-    const allData = all.map(rec => {
-      let displayName = rec.player;
-      if (displayName.toLowerCase() === signerAddress.toLowerCase() && localUsername) {
-        displayName = localUsername;
-      }
-      return {
-        user: displayName,
-        tokens: rec.score.toString(),
-        time: rec.time.toString()
-      };
-    });
-
-    console.log("All scores:", allData);
-    // Рендерим в другой таблице или как вам удобнее
-    renderAllScores(allData);
-  } catch (err) {
-    console.error("loadAllScores error:", err);
-    alert("Failed to load full score history");
-  }
-}
-
-// Пример дополнительной функции рендера для всей истории (с колонкой "time"):
-function renderAllScores(allData) {
-  const tableBody = document.querySelector('#allScoresTable tbody');
-  if (!tableBody) return;
-  tableBody.innerHTML = '';
-
-  allData.forEach(item => {
-    const row = document.createElement('tr');
-
-    const userCell = document.createElement('td');
-    userCell.textContent = item.user;
-    row.appendChild(userCell);
-
-    const scoreCell = document.createElement('td');
-    scoreCell.textContent = item.tokens;
-    row.appendChild(scoreCell);
-
-    // Можно конвертировать время из UNIX в локальную дату:
-    const timeCell = document.createElement('td');
-    const asDate = new Date(parseInt(item.time) * 1000).toLocaleString();
-    timeCell.textContent = asDate;
-    row.appendChild(timeCell);
-
-    tableBody.appendChild(row);
-  });
 }
 
 /***********************
@@ -371,9 +256,7 @@ if (saveScoreBtn) {
       console.log("Score submitted on-chain:", score);
       alert("Score submitted successfully!");
 
-      // Перезагрузим Top-10 и полную историю
       await loadTop10();
-      await loadAllScores();
     } catch (err) {
       console.error("submitScore error:", err);
       alert("Failed to submit score");
@@ -470,7 +353,6 @@ const resetScoreBtn = document.getElementById('resetScoreBtn');
 
 startBtn.addEventListener('click', () => {
   playSound('pop.mp3');
-  console.log("Start clicked -> hiding menu");
   menu.style.display = 'none';
 });
 
@@ -527,9 +409,8 @@ function renderLeaderboard(leaderData, isChain = false) {
 
   leaderData.forEach((item) => {
     const row = document.createElement('tr');
-    let displayName = item.user;
     const userCell = document.createElement('td');
-    userCell.textContent = displayName;
+    userCell.textContent = item.user;
     row.appendChild(userCell);
 
     const tokensCell = document.createElement('td');
@@ -570,7 +451,6 @@ function renderLocalLeaderboard() {
   }
   renderLeaderboard(data, false);
 }
-// При загрузке — локальная таблица
 renderLocalLeaderboard();
 
 /***********************
@@ -598,9 +478,7 @@ if (topRightControls) {
   topRightControls.style.pointerEvents = 'auto';
 }
 
-// New code for connected metamask - show short address
 connectWalletBtn.addEventListener('click', async () => {
-  console.log("Connect Wallet clicked!");
   const result = await connectMetamask();
   if (!result) {
     alert("Could not connect to Metamask");
@@ -612,7 +490,6 @@ connectWalletBtn.addEventListener('click', async () => {
   console.log("Wallet connected:", address);
 });
 
-// Helper to shorten address
 function shortAddress(addr) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
