@@ -139,19 +139,24 @@ const contractABI = [
 /***********************
  * 2. GLOBAL SETTINGS
  ***********************/
+// Будем хранить локальный счёт в переменной score, 
+// и имя (только локально) в localUsername.
 let score = 0;
 let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
-// Локальный ник пользователя (только у себя, в блокчейне не хранится)
 let localUsername = localStorage.getItem("username") || "";
 
+// Сохраним список лидеров с блокчейна, чтобы можно было перерисовывать таблицу
+// после каждого клика по пузырьку (для отображения актуального score пользователя).
+let chainLeaders = [];
+
 /***********************
- * 3. CONNECT METAMASK (SIMPLE)
+ * 3. CONNECT METAMASK
  ***********************/
 async function connectMetamask() {
   if (!window.ethereum) {
-    alert("Metamask not found. Please install a wallet extension.");
+    alert("Metamask not found.");
     return null;
   }
   try {
@@ -159,7 +164,7 @@ async function connectMetamask() {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     return { provider, signer };
-  } catch (err) {
+  } catch {
     alert("Wallet connection rejected");
     return null;
   }
@@ -176,22 +181,23 @@ async function loadTop10() {
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
+
     // Собираем массив данных (адрес -> короткий вид)
-    const leaderData = top.map((item) => ({
+    chainLeaders = top.map((item) => ({
       user: shortAddress(item.player),
       tokens: item.score.toString(),
     }));
 
-    renderLeaderboard(leaderData);
+    renderLeaderboard(chainLeaders);
 
-    // Дополнительно покажем лучший счёт подключённого адреса (необязательно)
+    // (Необязательно) показать лучший счёт для текущего адреса
     const signerAddress = await signer.getAddress();
     const best = await faucetContract.scores(signerAddress);
     const bestScoreEl = document.getElementById("myBestScore");
     if (bestScoreEl) {
       bestScoreEl.textContent = "Your best score: " + best.toString();
     }
-  } catch (err) {
+  } catch {
     alert("Failed to load leaderboard");
   }
 }
@@ -208,11 +214,12 @@ if (saveScoreBtn) {
 
     try {
       const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
-      // 1 native token
-      const priceWei = ethers.utils.parseEther("1");
+      const priceWei = ethers.utils.parseEther("1"); // 1 native token
       const tx = await faucetContract.submitScore(score, { value: priceWei });
       await tx.wait();
       alert("Score submitted successfully!");
+
+      // Перезагрузим цепочный топ-10
       await loadTop10();
     } catch {
       alert("Failed to submit score");
@@ -223,6 +230,7 @@ if (saveScoreBtn) {
 /***********************
  * 6. GAME (BUBBLES)
  ***********************/
+// Создаём 20 пузырей
 for (let i = 0; i < 20; i++) {
   createBubble("port");
   createBubble("Fearel");
@@ -251,6 +259,7 @@ function createBubble(type = "random") {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector(".bubble-container").getBoundingClientRect();
 
+    // Отражаемся от границ контейнера
     if (bubbleRect.left <= containerRect.left) deltaX = Math.abs(deltaX);
     else if (bubbleRect.right >= containerRect.right) deltaX = -Math.abs(deltaX);
     if (bubbleRect.top <= containerRect.top) deltaY = Math.abs(deltaY);
@@ -258,15 +267,20 @@ function createBubble(type = "random") {
 
     bubble.style.left = `${bubble.offsetLeft + deltaX}px`;
     bubble.style.top = `${bubble.offsetTop + deltaY}px`;
+
     if (!bubble.classList.contains("pop")) requestAnimationFrame(moveBubble);
   }
   moveBubble();
 
+  // Клик по пузырьку
   bubble.addEventListener("click", () => {
     bubble.classList.add("pop");
     playSound("pop.mp3");
     score++;
+    // Обновим локальный счёт (на экране) + перерисуем лидерборд (только локально)
     document.getElementById("score").textContent = score;
+    renderLeaderboard(chainLeaders);
+
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
@@ -294,16 +308,19 @@ const speedValue = document.getElementById("speedValue");
 const soundToggle = document.getElementById("soundToggle");
 const resetScoreBtn = document.getElementById("resetScoreBtn");
 
+// Кнопка "Start"
 startBtn.addEventListener("click", () => {
   playSound("pop.mp3");
   menu.style.display = "none";
 });
 
+// Кнопка "Settings"
 settingsBtn.addEventListener("click", () => {
   playSound("pop.mp3");
   settingsModal.style.display = "block";
 });
 
+// Кнопка "Close" в модалке
 closeSettingsBtn.addEventListener("click", () => {
   settingsModal.style.display = "none";
   applySettings();
@@ -328,6 +345,8 @@ function reSpawnGame() {
 resetScoreBtn.addEventListener("click", () => {
   score = 0;
   document.getElementById("score").textContent = score;
+  // Перерисуем локальную строку "You ..."
+  renderLeaderboard(chainLeaders);
 });
 
 speedRange.addEventListener("input", () => {
@@ -343,49 +362,46 @@ settingsIcon.addEventListener("click", () => {
 /***********************
  * 8. LEADERBOARD (TABLE)
  ***********************
-   Теперь добавим:
-   - колонку # (номер места)
-   - короткий адрес
-   - score
-   А сверху покажем одну строку с локальным ником (если есть).
+   - 3 колонки: #, User, Tokens
+   - Вверху строчка с локальным ником (если есть) и текущим локальным счётом.
 */
 function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector("#leaderboard tbody");
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = "";
 
-  // Если есть локальный ник, показываем отдельную строку в самом начале
+  // Если у нас есть локальный ник, показываем отдельную строку
   if (localUsername) {
     const rowMe = document.createElement("tr");
 
-    // Пустая ячейка вместо "#", чтобы ник выделялся
-    const emptyCell = document.createElement("td");
-    emptyCell.textContent = "You";
-    rowMe.appendChild(emptyCell);
+    // 1-я ячейка: "You"
+    const cellYou = document.createElement("td");
+    cellYou.textContent = "You";
+    rowMe.appendChild(cellYou);
 
-    // Ник
+    // 2-я ячейка: локальное имя
     const userCell = document.createElement("td");
     userCell.textContent = localUsername;
     rowMe.appendChild(userCell);
 
-    // Текущий счёт (локальный)
-    const myScoreCell = document.createElement("td");
-    myScoreCell.textContent = score.toString();
-    rowMe.appendChild(myScoreCell);
+    // 3-я ячейка: текущий локальный счёт
+    const scoreCell = document.createElement("td");
+    scoreCell.textContent = score.toString();
+    rowMe.appendChild(scoreCell);
 
     leaderboardBody.appendChild(rowMe);
   }
 
-  // Затем нумеруем топ-10
+  // Далее выводим топ-10 из блокчейна
   leaderData.forEach((item, index) => {
     const row = document.createElement("tr");
 
-    // Место (1..10)
+    // № (1..10)
     const rankCell = document.createElement("td");
     rankCell.textContent = (index + 1).toString();
     row.appendChild(rankCell);
 
-    // Адрес (короткий)
+    // Адрес
     const userCell = document.createElement("td");
     userCell.textContent = item.user;
     row.appendChild(userCell);
@@ -400,14 +416,15 @@ function renderLeaderboard(leaderData) {
 }
 
 /***********************
- * 9. (USERNAME REMOVED FROM BLOCKCHAIN)
+ * 9. USERNAME (LOCAL)
  ***********************/
-// Мы не сохраняем ник в блокчейне — только локально.
 const usernameInput = document.getElementById("usernameInput");
 const saveUsernameBtnField = document.getElementById("saveUsernameBtn");
 
 if (usernameInput && saveUsernameBtnField) {
   usernameInput.value = localUsername;
+
+  // Кнопка "Save" локального имени
   saveUsernameBtnField.addEventListener("click", () => {
     const name = usernameInput.value.trim();
     if (!name) {
@@ -417,13 +434,9 @@ if (usernameInput && saveUsernameBtnField) {
     localUsername = name;
     localStorage.setItem("username", name);
     alert(`Username "${name}" saved locally!`);
-    // Перерисуем таблицу, чтобы обновить "You" строку
-    // (либо дождёмся loadTop10, если нужна актуализация)
-    const leaderboardBody = document.querySelector("#leaderboard tbody");
-    if (leaderboardBody) {
-      // Можно снова вызвать loadTop10() — тогда и наша строка обновится
-      loadTop10();
-    }
+
+    // Перерисуем таблицу, чтобы отобразить новую строку "You: <localUsername>"
+    renderLeaderboard(chainLeaders);
   });
 }
 
@@ -441,8 +454,7 @@ if (connectWalletBtn) {
     const { signer } = result;
     const address = await signer.getAddress();
     connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
-
-    // При подключении сразу грузим топ-10
+    // После подключения сразу загружаем топ-10 из контракта
     await loadTop10();
   });
 }
@@ -456,6 +468,9 @@ if (topRightControls) {
   topRightControls.style.pointerEvents = "auto";
 }
 
+/***********************
+ * SHORT ADDRESS
+ ***********************/
 function shortAddress(addr) {
   return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
