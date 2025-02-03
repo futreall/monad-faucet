@@ -1,71 +1,64 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// ERC-20 interface to interact with an external token contract
-interface IERC20 {
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-    function transfer(address recipient, uint256 amount) external returns (bool);
-}
-
 /**
  * @title Faucet
- * @dev A contract where players can submit their game score by paying a fixed amount of tokens.
- *      The contract maintains a Top-10 leaderboard of the highest scores.
+ * @dev Хранит имя пользователя на блокчейне, принимает нативный токен, ведёт Top-10.
  */
 contract Faucet {
-    /// @dev Structure to hold a player's address and score.
+    /// @dev Структура для хранения адреса и счёта игрока
     struct Leader {
         address player;
         uint256 score;
     }
 
-    /// @dev Top-10 leaderboard array
+    /// @dev Массив Top-10
     Leader[10] public top10;
 
-    /// @dev Mapping to store each address's best score
+    /// @dev Mapping: адрес => лучший счёт
     mapping(address => uint256) public scores;
 
-    /// @dev Reference to the ERC-20 token contract used for payment
-    IERC20 public gameToken;
+    /// @dev Mapping: адрес => имя пользователя
+    mapping(address => string) public userNames;
 
-    /// @dev The amount of tokens required for each `submitScore` call
+    /// @dev Цена (в wei) за submitScore
     uint256 public price;
 
-    /// @dev The owner (deployer) of the contract, who can withdraw accrued tokens
+    /// @dev Адрес владельца (тот, кто задеплоил)
     address public owner;
 
     /**
-     * @notice Constructor: sets up the ERC-20 token address and price per score submission.
-     * @param tokenAddress The address of the ERC-20 token contract.
-     * @param _price The cost in tokens that a player needs to pay to submit a new score.
+     * @notice В конструкторе задаём цену, owner = deployer
+     * @param _price сколько нативных монет нужно отправить при submitScore (wei)
      */
-    constructor(address tokenAddress, uint256 _price) {
+    constructor(uint256 _price) {
         owner = msg.sender;
-        gameToken = IERC20(tokenAddress);
         price = _price;
     }
 
     /**
-     * @notice Submits a new score for the caller. 
-     *         Requires an ERC-20 allowance >= price. Also, the new score must exceed the caller's existing best score.
-     * @param newScore The new game score to submit.
+     * @notice Записать имя пользователя в блокчейн
+     * @param newName новое имя
      */
-    function submitScore(uint256 newScore) external {
+    function setUsername(string calldata newName) external {
+        userNames[msg.sender] = newName;
+    }
+
+    /**
+     * @notice Отправить новый счёт, оплатив нативным токеном (msg.value >= price).
+     * @param newScore счёт (должен быть больше, чем предыдущий)
+     */
+    function submitScore(uint256 newScore) external payable {
+        require(msg.value >= price, "Not enough native token");
         require(newScore > scores[msg.sender], "Not an improvement");
 
-        // Transfer 'price' tokens from the caller to the contract
-        bool ok = gameToken.transferFrom(msg.sender, address(this), price);
-        require(ok, "Token payment failed");
-
-        // Update the user's best score
+        // Сохраняем лучший счёт
         scores[msg.sender] = newScore;
 
-        // Check if the score enters the Top-10
+        // Проверяем, попадает ли он в Top-10
         if (newScore > top10[9].score) {
             top10[9] = Leader(msg.sender, newScore);
-
-            // Bubble the new score upwards in the array if it's higher than others
+            // "пузырьковая" сортировка вниз
             for (uint i = 9; i > 0; i--) {
                 if (top10[i].score > top10[i - 1].score) {
                     (top10[i], top10[i - 1]) = (top10[i - 1], top10[i]);
@@ -77,20 +70,18 @@ contract Faucet {
     }
 
     /**
-     * @notice Returns the current Top-10 leaderboard as an array of Leader structs.
+     * @notice Возвращает текущий массив Top-10
      */
     function getTop10() external view returns (Leader[10] memory) {
         return top10;
     }
 
     /**
-     * @notice Allows the owner to withdraw all accumulated tokens from the contract.
-     * @param to The address to which the tokens will be transferred.
+     * @notice Позволяет владельцу забрать весь накопленный баланс (нативный токен).
      */
-    function withdrawTokens(address to) external {
+    function withdrawNative(address payable to) external {
         require(msg.sender == owner, "Not owner");
-        uint256 balance = gameToken.balanceOf(address(this));
-        require(balance > 0, "No tokens to withdraw");
-        gameToken.transfer(to, balance);
+        require(address(this).balance > 0, "No balance");
+        to.transfer(address(this).balance);
     }
 }
