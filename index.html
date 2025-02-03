@@ -8,18 +8,18 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="monad.png">
 
-  <!-- Шрифт -->
+  <!-- Шрифт Montserrat -->
   <link
     href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap"
     rel="stylesheet"
   />
  
-  <!-- Стили -->
+  <!-- Подключаем стили -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- Лидеры (слева) -->
+  <!-- Лидерборд (слева) -->
   <div class="leaderboard-container">
     <h2 class="leaderboard-title">Leaderboard</h2>
     <table class="leaderboard-table" id="leaderboard">
@@ -30,7 +30,7 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Заполняется JS -->
+        <!-- Заполняется из JS -->
       </tbody>
     </table>
   </div>
@@ -38,15 +38,15 @@
   <!-- Прозрачная надпись -->
   <div class="powered-by">🍓🍓🍓</div>
 
-  <!-- Заголовок + Счётчик -->
+  <!-- Заголовок + счётчик -->
   <h1 class="title">Farm DMON</h1>
   <div class="score">Score: <span id="score">0</span> DMON</div>
 
-  <!-- Меню (тёмная подложка) -->
+  <!-- Тёмная подложка (меню) -->
   <div class="menu">
     <h2 class="menu-title">Farm DMON</h2>
 
-    <!-- Столбик кнопок -->
+    <!-- Колонка кнопок -->
     <div class="menu-buttons" style="flex-direction: column; align-items:center; gap:20px;">
       
       <!-- Первая строка: Start, Settings -->
@@ -76,10 +76,17 @@
   <!-- Контейнер для пузырьков -->
   <div class="bubble-container"></div>
 
-  <!-- Иконка-шестерёнка (справа вверху) -->
-  <div id="settingsIcon" class="settings-icon">&#9881;</div>
+  <!-- Правый верхний угол: кнопка "Connect Wallet" + иконка "шестерёнки" -->
+  <!-- z-index:10001, чтобы не перекрывалось .menu (9999) -->
+  <div class="top-right-controls" style="z-index:10001;">
+    <!-- “мягкая” анимация сверху (from-top-bounce) -->
+    <button id="connectWalletBtn" class="btn-3d from-top-bounce">
+      Connect Wallet
+    </button>
+    <div id="settingsIcon" class="settings-icon">&#9881;</div>
+  </div>
 
-  <!-- Модалка Settings -->
+  <!-- Окно Settings -->
   <div class="settings-modal" id="settingsModal" style="display:none;">
     <h3>Settings</h3>
 
@@ -107,19 +114,22 @@
     <input type="checkbox" id="soundToggle" checked />
     <br /><br />
 
-    <!-- Кнопка “Save Score” (approve + submit) -->
+    <!-- “Save Score” -->
     <button id="saveScoreBtn">Save Score</button>
-    <!-- Кнопка сброса очков -->
+    <!-- Сброс очков -->
     <button id="resetScoreBtn">Reset Score</button>
     <br /><br />
 
     <button id="closeSettingsBtn">Close</button>
   </div>
 
-  <!-- 1) UMD ethers (нет type="module") -->
+  <!-- 1) ethers.js (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.umd/dist/ethers.umd.min.js"></script>
 
-  <!-- 2) Наш скрипт -->
+  <!-- 2) Web3Modal (v1) -->
+  <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
+
+  <!-- 3) Наш скрипт (script.js) -->
   <script src="script.js"></script>
 </body>
 </html>
