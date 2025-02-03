@@ -71,11 +71,11 @@ async function approveTokens(amountWei) {
     console.log("Approved tokens:", amountWei);
     return true;
   } catch (err) {
-    console.error("approveTokens error:", err);
-    alert("Approve failed");
-    return false;
-  }
+  console.error("approveTokens error:", err);
+  alert("Approve failed: " + (err?.message || err));
+  return false;
 }
+
 
 async function submitScoreOnChain(finalScore) {
   const result = await connectMetamask();
