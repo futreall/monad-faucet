@@ -143,7 +143,7 @@ let score = 0;
 let currentBubbleCount = 20;
 let currentSpeed = 1;
 let soundOn = true;
-let localUsername = localStorage.getItem("username") || ""; 
+let localUsername = localStorage.getItem("username") || "";
 
 // Храним лидеров из блокчейна, чтобы перерисовывать таблицу
 let chainLeaders = [];
@@ -161,7 +161,7 @@ async function connectMetamask() {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     return { provider, signer };
-  } catch {
+  } catch (err) {
     alert("Wallet connection rejected");
     return null;
   }
@@ -179,8 +179,7 @@ async function loadTop10() {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
 
-    // Здесь, если нужен фильтр от дублей, делаем его, 
-    // но по умолчанию просто map'им:
+    // Если нужны фильтры от дублей, можно сделать здесь
     chainLeaders = top.map((item) => ({
       user: shortAddress(item.player),
       tokens: item.score.toString()
@@ -188,14 +187,14 @@ async function loadTop10() {
 
     renderLeaderboard(chainLeaders);
 
-    // (Необязательно) показать лучший счёт для текущего адреса
+    // Покажем лучший счёт для текущего адреса
     const signerAddress = await signer.getAddress();
     const best = await faucetContract.scores(signerAddress);
     const bestScoreEl = document.getElementById("myBestScore");
     if (bestScoreEl) {
       bestScoreEl.textContent = "Your best score: " + best.toString();
     }
-  } catch {
+  } catch (err) {
     alert("Failed to load leaderboard");
   }
 }
@@ -209,7 +208,6 @@ if (saveScoreBtn) {
     const result = await connectMetamask();
     if (!result) return;
     const { signer } = result;
-
     try {
       const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
       const priceWei = ethers.utils.parseEther("1");
@@ -217,7 +215,7 @@ if (saveScoreBtn) {
       await tx.wait();
       alert("Score submitted successfully!");
       await loadTop10();
-    } catch {
+    } catch (err) {
       alert("Failed to submit score");
     }
   });
@@ -254,8 +252,6 @@ function createBubble(type = "random") {
   function moveBubble() {
     const bubbleRect = bubble.getBoundingClientRect();
     const containerRect = document.querySelector(".bubble-container").getBoundingClientRect();
-
-    // отскакиваем от краёв
     if (bubbleRect.left <= containerRect.left) deltaX = Math.abs(deltaX);
     else if (bubbleRect.right >= containerRect.right) deltaX = -Math.abs(deltaX);
     if (bubbleRect.top <= containerRect.top) deltaY = Math.abs(deltaY);
@@ -263,7 +259,6 @@ function createBubble(type = "random") {
 
     bubble.style.left = `${bubble.offsetLeft + deltaX}px`;
     bubble.style.top = `${bubble.offsetTop + deltaY}px`;
-
     if (!bubble.classList.contains("pop")) requestAnimationFrame(moveBubble);
   }
   moveBubble();
@@ -274,7 +269,7 @@ function createBubble(type = "random") {
     playSound("pop.mp3");
     score++;
     document.getElementById("score").textContent = score;
-    // Перерисуем таблицу, чтобы наш локальный счёт отобразился
+    // Перерисуем таблицу (локальная строка "You")
     renderLeaderboard(chainLeaders);
 
     setTimeout(() => {
@@ -315,7 +310,7 @@ settingsBtn.addEventListener("click", () => {
   settingsModal.style.display = "block";
 });
 
-// Close Settings
+// Close settings
 closeSettingsBtn.addEventListener("click", () => {
   settingsModal.style.display = "none";
   applySettings();
@@ -329,7 +324,7 @@ function applySettings() {
 }
 
 function reSpawnGame() {
-  document.querySelectorAll(".bubble").forEach((b) => b.remove());
+  document.querySelectorAll(".bubble").forEach(b => b.remove());
   for (let i = 0; i < currentBubbleCount; i++) {
     createBubble("port");
     createBubble("Fearel");
@@ -356,22 +351,13 @@ settingsIcon.addEventListener("click", () => {
 
 /***********************
  * 8. LEADERBOARD (TABLE)
- ***********************
-   <thead>
-     <tr>
-       <th>#</th>
-       <th>User</th>
-       <th>Tokens</th>
-     </tr>
-   </thead>
-   <tbody> ...
-*/
+ ***********************/
 function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector("#leaderboard tbody");
   if (!leaderboardBody) return;
   leaderboardBody.innerHTML = "";
 
-  // "You" (локальный)
+  // Выводим строку с локальным пользователем
   if (localUsername) {
     const rowMe = document.createElement("tr");
 
@@ -393,7 +379,7 @@ function renderLeaderboard(leaderData) {
     leaderboardBody.appendChild(rowMe);
   }
 
-  // Топ-10 из контракта
+  // Выводим цепочный топ-10
   leaderData.forEach((item, index) => {
     const row = document.createElement("tr");
 
@@ -430,7 +416,6 @@ if (usernameInput && saveUsernameBtnField) {
     localUsername = name;
     localStorage.setItem("username", name);
     alert(`Username "${name}" saved locally!`);
-    // Перерисовываем таблицу для "You"
     renderLeaderboard(chainLeaders);
   });
 }
