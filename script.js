@@ -179,7 +179,6 @@ async function loadTop10() {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
 
-    // Если нужны фильтры от дублей, можно сделать здесь
     chainLeaders = top.map((item) => ({
       user: shortAddress(item.player),
       tokens: item.score.toString()
@@ -224,7 +223,6 @@ if (saveScoreBtn) {
 /***********************
  * 6. GAME (BUBBLES)
  ***********************/
-// Генерируем пузырьки
 for (let i = 0; i < 20; i++) {
   createBubble("port");
   createBubble("Fearel");
@@ -263,15 +261,12 @@ function createBubble(type = "random") {
   }
   moveBubble();
 
-  // клик по пузырю
   bubble.addEventListener("click", () => {
     bubble.classList.add("pop");
     playSound("pop.mp3");
     score++;
     document.getElementById("score").textContent = score;
-    // Перерисуем таблицу (локальная строка "You")
     renderLeaderboard(chainLeaders);
-
     setTimeout(() => {
       bubble.remove();
       createBubble(type);
@@ -298,19 +293,42 @@ const speedValue = document.getElementById("speedValue");
 const soundToggle = document.getElementById("soundToggle");
 const resetScoreBtn = document.getElementById("resetScoreBtn");
 
-// Start
+/***********************
+ * 8. ERROR MODAL
+ ***********************/
+const errorModal = document.getElementById("errorModal");
+const errorMessageEl = document.getElementById("errorMessage");
+const closeErrorBtn = document.getElementById("closeErrorBtn");
+
+closeErrorBtn.addEventListener("click", () => {
+  errorModal.style.display = "none";
+});
+
+function showError(msg) {
+  errorMessageEl.textContent = msg;
+  errorModal.style.display = "block";
+}
+
+/***********************
+ * 9. START BUTTON
+ ***********************/
 startBtn.addEventListener("click", () => {
+  if (!localUsername) {
+    showError("Please enter and save your username first!");
+    return;
+  }
   playSound("pop.mp3");
   menu.style.display = "none";
 });
 
-// Settings
+/***********************
+ * 10. SETTINGS
+ ***********************/
 settingsBtn.addEventListener("click", () => {
   playSound("pop.mp3");
   settingsModal.style.display = "block";
 });
 
-// Close settings
 closeSettingsBtn.addEventListener("click", () => {
   settingsModal.style.display = "none";
   applySettings();
@@ -332,7 +350,6 @@ function reSpawnGame() {
   }
 }
 
-// Reset score
 resetScoreBtn.addEventListener("click", () => {
   score = 0;
   document.getElementById("score").textContent = score;
@@ -350,7 +367,7 @@ settingsIcon.addEventListener("click", () => {
 });
 
 /***********************
- * 8. LEADERBOARD (TABLE)
+ * 11. LEADERBOARD (TABLE)
  ***********************/
 function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector("#leaderboard tbody");
@@ -400,7 +417,7 @@ function renderLeaderboard(leaderData) {
 }
 
 /***********************
- * 9. USERNAME (LOCAL)
+ * 12. USERNAME (LOCAL)
  ***********************/
 const usernameInput = document.getElementById("usernameInput");
 const saveUsernameBtnField = document.getElementById("saveUsernameBtn");
@@ -421,7 +438,7 @@ if (usernameInput && saveUsernameBtnField) {
 }
 
 /***********************
- * 10. CONNECT WALLET BUTTON
+ * 13. CONNECT WALLET BUTTON
  ***********************/
 const connectWalletBtn = document.getElementById("connectWalletBtn");
 if (connectWalletBtn) {
@@ -434,14 +451,12 @@ if (connectWalletBtn) {
     const { signer } = result;
     const address = await signer.getAddress();
     connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
-
-    // Загрузка топ-10
     await loadTop10();
   });
 }
 
 /**********************************************
- * 11. FIX Z-INDEX FOR TOP-RIGHT BUTTONS
+ * 14. FIX Z-INDEX FOR TOP-RIGHT BUTTONS
  **********************************************/
 const topRightControls = document.querySelector(".top-right-controls");
 if (topRightControls) {
