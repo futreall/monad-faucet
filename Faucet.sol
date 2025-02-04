@@ -46,36 +46,39 @@ contract Faucet {
 
     /**
      * @notice Отправить новый счёт, оплатив нативным токеном (msg.value >= price).
+     *         Если счёт уже есть в Top-10, просто обновляем. Иначе сравниваем с 10-м местом.
      * @param newScore счёт (должен быть больше, чем предыдущий)
      */
     function submitScore(uint256 newScore) external payable {
         require(msg.value >= price, "Not enough native token");
         require(newScore > scores[msg.sender], "Not an improvement");
 
-        // Сохраняем лучший счёт
+        // Обновляем лучший счёт
         scores[msg.sender] = newScore;
 
         // Проверяем, есть ли уже адрес в Top-10
         bool found = false;
         for (uint i = 0; i < 10; i++) {
             if (top10[i].player == msg.sender) {
+                // Если уже есть — просто обновляем
                 top10[i].score = newScore;
                 found = true;
                 break;
             }
         }
 
-        // Если адреса нет, проверяем последнее место
+        // Если адреса нет в Top-10, проверяем — выше ли он, чем у 10-го места
         if (!found) {
             if (newScore > top10[9].score) {
+                // Заменяем десятое место
                 top10[9] = Leader(msg.sender, newScore);
             } else {
-                // Не попадает в топ
+                // Если счёт не выше — не попадает в топ
                 return;
             }
         }
 
-        // "Пузырьковая" сортировка — двигаем запись вверх
+        // "Пузырьковая" сортировка — поднимаем обновлённую запись вверх, если её счёт больше соседнего
         for (uint i = 9; i > 0; i--) {
             if (top10[i].score > top10[i - 1].score) {
                 (top10[i], top10[i - 1]) = (top10[i - 1], top10[i]);
