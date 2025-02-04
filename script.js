@@ -515,17 +515,22 @@ if (usernameInput && saveUsernameBtnField) {
 const connectWalletBtn = document.getElementById("connectWalletBtn");
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener("click", async () => {
-    const result = await connectMetamask();
-    if (!result) {
-      alert("Could not connect to Metamask");
-      return;
-    }
-    const { signer } = result;
-    const address = await signer.getAddress();
-    connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
-    await loadTop10();
-  });
-}
+  const result = await connectMetamask();
+  if (!result) {
+    // Вместо alert
+    showNotification("Could not connect to Metamask");
+    return;
+  }
+  const { signer } = result;
+  const address = await signer.getAddress();
+  connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
+
+  // Уведомление при успешном подключении
+  showNotification(`Wallet connected: ${shortAddress(address)}`);
+
+  await loadTop10();
+});
+
 
 /**********************************************
  * 15. FIX Z-INDEX FOR TOP-RIGHT BUTTONS
