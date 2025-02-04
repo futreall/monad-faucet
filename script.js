@@ -474,6 +474,22 @@ function renderLeaderboard(leaderData) {
 /***********************
  * 13. USERNAME (LOCAL)
  ***********************/
+
+/* ====== Уведомление ====== */
+function showNotification(msg) {
+  const noteEl = document.getElementById("notification");
+  if (!noteEl) return;
+  
+  noteEl.textContent = msg;
+  noteEl.style.opacity = "1";
+  noteEl.style.transform = "translateY(0)";
+  
+  setTimeout(() => {
+    noteEl.style.opacity = "0";
+    noteEl.style.transform = "translateY(20px)";
+  }, 2000);
+}
+
 const usernameInput = document.getElementById("usernameInput");
 const saveUsernameBtnField = document.getElementById("saveUsernameBtn");
 
@@ -482,12 +498,13 @@ if (usernameInput && saveUsernameBtnField) {
   saveUsernameBtnField.addEventListener("click", () => {
     const name = usernameInput.value.trim();
     if (!name) {
-      alert("Enter a valid username!");
+      showError("Enter a valid username!");
       return;
     }
     localUsername = name;
     localStorage.setItem("username", name);
-    alert(`Username "${name}" saved locally!`);
+    // Показываем уведомление вместо alert
+    showNotification(`Username "${name}" saved!`);
     renderLeaderboard(chainLeaders);
   });
 }
