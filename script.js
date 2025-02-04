@@ -1,8 +1,21 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0x121af877c249ab6b950634026c8251baa9226a1e";
+const contractAddress = "0x4091e90b5439d6163c7128145ddfbb2098686570";
 const contractABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "newName",
+        "type": "string"
+      }
+    ],
+    "name": "setUsername",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
   {
     "inputs": [
       {
@@ -133,6 +146,25 @@ const contractABI = [
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "userNames",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
@@ -151,12 +183,11 @@ let chainLeaders = [];
 /***********************
  * 3. READ-ONLY PROVIDER
  ***********************/
-// Укажи правильный RPC для Monad Devnet:
 const readOnlyProvider = new ethers.providers.JsonRpcProvider(
   "https://rpc-devnet.monadinfra.com/rpc/3fe540e310bbb6ef0b9f16cd23073b0a"
 );
 
-// Загрузка Top-10 без Metamask (при загрузке страницы)
+// Загрузка Top-10 без Metamask
 async function loadTop10ReadOnly() {
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, readOnlyProvider);
@@ -206,7 +237,6 @@ async function loadTop10() {
   try {
     const faucetContract = new ethers.Contract(contractAddress, contractABI, signer);
     const top = await faucetContract.getTop10();
-
     chainLeaders = top.map((item) => ({
       user: shortAddress(item.player),
       tokens: item.score.toString()
