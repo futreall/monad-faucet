@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title Faucet
- * @dev Хранит имя пользователя, принимает нативный токен, ведёт Top-10 с проверкой дубликатов.
+ * @dev Хранит имя пользователя, принимает нативный токен, ведёт Top-10 без дублирующихся записей и без заполнения всех слотов одним адресом.
  */
 contract Faucet {
     /// @dev Структура для хранения адреса и счёта игрока
@@ -46,46 +46,52 @@ contract Faucet {
 
     /**
      * @notice Отправить новый счёт, оплатив нативным токеном (msg.value >= price).
-     *         Если счёт уже есть в Top-10, просто обновляем. Иначе сравниваем с 10-м местом.
      * @param newScore счёт (должен быть больше, чем предыдущий)
+     *
+     * Логика:
+     *  1) Проверяем msg.value >= price и что newScore > старого счёта.
+     *  2) Если адрес уже в топе, удаляем его оттуда (сдвигаем элементы),
+     *     чтобы не получить дубликатов.
+     *  3) Если счёт не выше 10-го места (после удаления), выходим.
+     *  4) Вставляем запись в нужную позицию (сортировка по убыванию).
      */
     function submitScore(uint256 newScore) external payable {
         require(msg.value >= price, "Not enough native token");
         require(newScore > scores[msg.sender], "Not an improvement");
 
-        // Обновляем лучший счёт
         scores[msg.sender] = newScore;
 
-        // Проверяем, есть ли уже адрес в Top-10
-        bool found = false;
+        // 1. Удаляем старую запись, если есть
         for (uint i = 0; i < 10; i++) {
             if (top10[i].player == msg.sender) {
-                // Если уже есть — просто обновляем
-                top10[i].score = newScore;
-                found = true;
+                // Сдвигаем элементы сверху вниз
+                for (uint j = i; j < 9; j++) {
+                    top10[j] = top10[j + 1];
+                }
+                // Последнюю ячейку очищаем
+                top10[9] = Leader(address(0), 0);
                 break;
             }
         }
 
-        // Если адреса нет в Top-10, проверяем — выше ли он, чем у 10-го места
-        if (!found) {
-            if (newScore > top10[9].score) {
-                // Заменяем десятое место
-                top10[9] = Leader(msg.sender, newScore);
-            } else {
-                // Если счёт не выше — не попадает в топ
-                return;
-            }
+        // 2. Если теперь newScore <= top10[9].score, значит не попадает в топ
+        if (newScore <= top10[9].score) {
+            return;
         }
 
-        // "Пузырьковая" сортировка — поднимаем обновлённую запись вверх, если её счёт больше соседнего
-        for (uint i = 9; i > 0; i--) {
-            if (top10[i].score > top10[i - 1].score) {
-                (top10[i], top10[i - 1]) = (top10[i - 1], top10[i]);
-            } else {
-                break;
-            }
+        // 3. Ищем позицию, куда вставить (по убыванию счёта)
+        uint pos = 0;
+        while (pos < 10 && top10[pos].score >= newScore) {
+            pos++;
         }
+
+        // 4. Сдвигаем всех вниз на 1, начиная с 9 до pos+1
+        for (uint i = 9; i > pos; i--) {
+            top10[i] = top10[i - 1];
+        }
+
+        // 5. Вставляем новую запись
+        top10[pos] = Leader(msg.sender, newScore);
     }
 
     /**
