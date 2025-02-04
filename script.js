@@ -212,7 +212,7 @@ window.addEventListener("DOMContentLoaded", () => {
  ***********************/
 async function connectMetamask() {
   if (!window.ethereum) {
-    alert("Metamask not found.");
+    showNotification("Metamask not found.");
     return null;
   }
   try {
@@ -221,7 +221,7 @@ async function connectMetamask() {
     const signer = provider.getSigner();
     return { provider, signer };
   } catch (err) {
-    alert("Wallet connection rejected");
+    showNotification("Wallet connection rejected");
     return null;
   }
 }
@@ -252,7 +252,7 @@ async function loadTop10() {
       bestScoreEl.textContent = "Your best score: " + best.toString();
     }
   } catch (err) {
-    alert("Failed to load leaderboard");
+    showNotification("Failed to load leaderboard");
   }
 }
 
@@ -270,11 +270,11 @@ if (saveScoreBtn) {
       const priceWei = ethers.utils.parseEther("1");
       const tx = await faucetContract.submitScore(score, { value: priceWei });
       await tx.wait();
-      alert("Score submitted successfully!");
+      showNotification("Score submitted successfully!");
       // Обновляем таблицу после отправки
       await loadTop10();
     } catch (err) {
-      alert("Failed to submit score");
+      showNotification("Failed to submit score");
     }
   });
 }
@@ -474,7 +474,6 @@ function renderLeaderboard(leaderData) {
 /***********************
  * 13. USERNAME (LOCAL)
  ***********************/
-
 /* ====== Уведомление ====== */
 function showNotification(msg) {
   const noteEl = document.getElementById("notification");
@@ -515,22 +514,20 @@ if (usernameInput && saveUsernameBtnField) {
 const connectWalletBtn = document.getElementById("connectWalletBtn");
 if (connectWalletBtn) {
   connectWalletBtn.addEventListener("click", async () => {
-  const result = await connectMetamask();
-  if (!result) {
-    // Вместо alert
-    showNotification("Could not connect to Metamask");
-    return;
-  }
-  const { signer } = result;
-  const address = await signer.getAddress();
-  connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
-
-  // Уведомление при успешном подключении
-  showNotification(`Wallet connected: ${shortAddress(address)}`);
-
-  await loadTop10();
-});
-
+    const result = await connectMetamask();
+    if (!result) {
+      // Вместо alert
+      showNotification("Could not connect to Metamask");
+      return;
+    }
+    const { signer } = result;
+    const address = await signer.getAddress();
+    connectWalletBtn.textContent = `Wallet: ${shortAddress(address)}`;
+    // Уведомление об успехе
+    showNotification(`Wallet connected: ${shortAddress(address)}`);
+    await loadTop10();
+  });
+}
 
 /**********************************************
  * 15. FIX Z-INDEX FOR TOP-RIGHT BUTTONS
