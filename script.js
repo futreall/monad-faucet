@@ -149,7 +149,35 @@ let localUsername = localStorage.getItem("username") || "";
 let chainLeaders = [];
 
 /***********************
- * 3. CONNECT METAMASK
+ * 3. READ-ONLY PROVIDER
+ ***********************/
+// Укажи правильный RPC для Monad Devnet:
+const readOnlyProvider = new ethers.providers.JsonRpcProvider(
+  "https://rpc-devnet.monadinfra.com/rpc/3fe540e310bbb6ef0b9f16cd23073b0a"
+);
+
+// Загрузка Top-10 без Metamask (при загрузке страницы)
+async function loadTop10ReadOnly() {
+  try {
+    const faucetContract = new ethers.Contract(contractAddress, contractABI, readOnlyProvider);
+    const top = await faucetContract.getTop10();
+    chainLeaders = top.map((item) => ({
+      user: shortAddress(item.player),
+      tokens: item.score.toString()
+    }));
+    renderLeaderboard(chainLeaders);
+  } catch (err) {
+    alert("Failed to load leaderboard (read-only).");
+  }
+}
+
+// Вызываем при загрузке страницы
+window.addEventListener("DOMContentLoaded", () => {
+  loadTop10ReadOnly();
+});
+
+/***********************
+ * 4. CONNECT METAMASK
  ***********************/
 async function connectMetamask() {
   if (!window.ethereum) {
@@ -168,7 +196,7 @@ async function connectMetamask() {
 }
 
 /***********************
- * 4. LOAD TOP-10
+ * 5. LOAD TOP-10 (WITH SIGNER)
  ***********************/
 async function loadTop10() {
   const result = await connectMetamask();
@@ -199,7 +227,7 @@ async function loadTop10() {
 }
 
 /***********************
- * 5. SAVE SCORE
+ * 6. SAVE SCORE
  ***********************/
 const saveScoreBtn = document.getElementById("saveScoreBtn");
 if (saveScoreBtn) {
@@ -213,6 +241,7 @@ if (saveScoreBtn) {
       const tx = await faucetContract.submitScore(score, { value: priceWei });
       await tx.wait();
       alert("Score submitted successfully!");
+      // Обновляем таблицу после отправки
       await loadTop10();
     } catch (err) {
       alert("Failed to submit score");
@@ -221,7 +250,7 @@ if (saveScoreBtn) {
 }
 
 /***********************
- * 6. GAME (BUBBLES)
+ * 7. GAME (BUBBLES)
  ***********************/
 for (let i = 0; i < 20; i++) {
   createBubble("port");
@@ -280,7 +309,7 @@ function playSound(soundFile) {
 }
 
 /***********************
- * 7. MENU / SETTINGS
+ * 8. MENU / SETTINGS
  ***********************/
 const menu = document.querySelector(".menu");
 const startBtn = document.getElementById("startBtn");
@@ -294,7 +323,7 @@ const soundToggle = document.getElementById("soundToggle");
 const resetScoreBtn = document.getElementById("resetScoreBtn");
 
 /***********************
- * 8. ERROR MODAL
+ * 9. ERROR MODAL
  ***********************/
 const errorModal = document.getElementById("errorModal");
 const errorMessageEl = document.getElementById("errorMessage");
@@ -310,7 +339,7 @@ function showError(msg) {
 }
 
 /***********************
- * 9. START BUTTON
+ * 10. START BUTTON
  ***********************/
 startBtn.addEventListener("click", () => {
   if (!localUsername) {
@@ -322,7 +351,7 @@ startBtn.addEventListener("click", () => {
 });
 
 /***********************
- * 10. SETTINGS
+ * 11. SETTINGS
  ***********************/
 settingsBtn.addEventListener("click", () => {
   playSound("pop.mp3");
@@ -367,7 +396,7 @@ settingsIcon.addEventListener("click", () => {
 });
 
 /***********************
- * 11. LEADERBOARD (TABLE)
+ * 12. LEADERBOARD (TABLE)
  ***********************/
 function renderLeaderboard(leaderData) {
   const leaderboardBody = document.querySelector("#leaderboard tbody");
@@ -377,18 +406,14 @@ function renderLeaderboard(leaderData) {
   // Выводим строку с локальным пользователем
   if (localUsername) {
     const rowMe = document.createElement("tr");
-
-    // 1) "You"
     const cellYou = document.createElement("td");
     cellYou.textContent = "You";
     rowMe.appendChild(cellYou);
 
-    // 2) локальный ник
     const userCell = document.createElement("td");
     userCell.textContent = localUsername;
     rowMe.appendChild(userCell);
 
-    // 3) локальный счёт
     const scoreCell = document.createElement("td");
     scoreCell.textContent = score.toString();
     rowMe.appendChild(scoreCell);
@@ -417,7 +442,7 @@ function renderLeaderboard(leaderData) {
 }
 
 /***********************
- * 12. USERNAME (LOCAL)
+ * 13. USERNAME (LOCAL)
  ***********************/
 const usernameInput = document.getElementById("usernameInput");
 const saveUsernameBtnField = document.getElementById("saveUsernameBtn");
@@ -438,7 +463,7 @@ if (usernameInput && saveUsernameBtnField) {
 }
 
 /***********************
- * 13. CONNECT WALLET BUTTON
+ * 14. CONNECT WALLET BUTTON
  ***********************/
 const connectWalletBtn = document.getElementById("connectWalletBtn");
 if (connectWalletBtn) {
@@ -456,7 +481,7 @@ if (connectWalletBtn) {
 }
 
 /**********************************************
- * 14. FIX Z-INDEX FOR TOP-RIGHT BUTTONS
+ * 15. FIX Z-INDEX FOR TOP-RIGHT BUTTONS
  **********************************************/
 const topRightControls = document.querySelector(".top-right-controls");
 if (topRightControls) {
