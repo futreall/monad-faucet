@@ -1,7 +1,7 @@
 /***********************
  * 1. CONTRACT PARAMETERS
  ***********************/
-const contractAddress = "0xd56350f18b072f7f20cb26cd1315807d455841ce"; 
+const contractAddress = "0x199a002f2514cb3ddb3a55309fa901733dbc422e";
 const contractABI = [
   {
     "inputs": [
