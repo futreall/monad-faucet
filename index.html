@@ -123,8 +123,15 @@
     <button id="closeSettingsBtn">Close</button>
   </div>
 
+  <!-- Окно ошибки (при отсутствии имени) -->
+  <div class="settings-modal" id="errorModal" style="display:none; background: linear-gradient(135deg, #ff6767, #ffa4a4);">
+    <h3>Error</h3>
+    <p id="errorMessage"></p>
+    <button id="closeErrorBtn">Close</button>
+  </div>
+
   <!-- 1) ethers.js (UMD) -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5/dist/ethers.umd.min.js"></script>
 
   <!-- 2) Наш скрипт (script.js) -->
   <script src="script.js"></script>
