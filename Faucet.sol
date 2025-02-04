@@ -55,16 +55,33 @@ contract Faucet {
         // Сохраняем лучший счёт
         scores[msg.sender] = newScore;
 
-        // Проверяем, попадает ли он в Top-10
-        if (newScore > top10[9].score) {
-            top10[9] = Leader(msg.sender, newScore);
-            // "пузырьковая" сортировка вниз
-            for (uint i = 9; i > 0; i--) {
-                if (top10[i].score > top10[i - 1].score) {
-                    (top10[i], top10[i - 1]) = (top10[i - 1], top10[i]);
-                } else {
-                    break;
-                }
+        // Ищем, есть ли уже адрес в Top-10
+        bool found = false;
+        for (uint i = 0; i < 10; i++) {
+            if (top10[i].player == msg.sender) {
+                // Адрес уже в списке — обновим счёт
+                top10[i].score = newScore;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            // Если адреса нет в Top-10 — проверяем, выше ли он 10-го места
+            if (newScore > top10[9].score) {
+                top10[9] = Leader(msg.sender, newScore);
+            } else {
+                // Если не выше — выходим
+                return;
+            }
+        }
+
+        // "пузырьковая" сортировка — поднимаем обновлённую запись вверх
+        for (uint i = 9; i > 0; i--) {
+            if (top10[i].score > top10[i - 1].score) {
+                (top10[i], top10[i - 1]) = (top10[i - 1], top10[i]);
+            } else {
+                break;
             }
         }
     }
