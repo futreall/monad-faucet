@@ -14,7 +14,7 @@ body {
 
 /* Огромная полупрозрачная надпись MONAD на фоне */
 body::before {
-  content: 'MONAD';
+  content: 'DONAT';
   position: absolute;
   top: 50%;
   left: 50%;
